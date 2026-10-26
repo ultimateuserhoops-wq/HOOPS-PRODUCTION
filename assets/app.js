@@ -17,7 +17,7 @@ const DRAFT = {};             // DRAFT[ma+'|'+section] = {key: value}
 let lastCreated = null, editMa = null, allowDup = false;
 const EDIT_IN = {};           // đơn đã in đang mở lại để sửa
 const EPF = {};               // thiết lập ép theo cuộn: EPF[key] = {epLe, ngay}
-const F = {q:'', cs:'', th:'', td:'chua', bpq:'', bpShowDone:false, myCs:'', mayX:'', mayQ:'', tkMonth:'', tkWho:''};
+const F = {q:'', cs:'', th:'', td:'chua', bpq:'', bpShowDone:false, myCs:'', mayX:'', mayQ:'', htQ:'', htCs:'', htX:'', htOpen:{}, tkMonth:'', tkWho:''};
 let SLM = '';
 const TKF = {ngay:'', tk:'', don:'', ten:'', th:'HOOPS', rapAo:'', rapQuan:'', ghiChu:'', noMa:false};
 const store = {get(k){try{return localStorage.getItem('tdie_'+k)}catch(e){return null}}, set(k,v){try{localStorage.setItem('tdie_'+k,v)}catch(e){}}, del(k){try{localStorage.removeItem('tdie_'+k)}catch(e){}}};
@@ -32,6 +32,7 @@ const VIEWS = [
   {id:'bpep', name:'BP Ép', role:['BP ÉP','BP IN'], step:3},
   {id:'cuatoi', name:'CS xác nhận SL', role:'CS', step:4},
   {id:'may', name:'Kế hoạch may', role:'KẾ HOẠCH MAY', step:5},
+  {id:'xong', name:'Đơn hoàn thành', role:''},
   {id:'tiendo', name:'Tiến độ', role:''},
   {id:'slin', name:'Sản lượng In', role:'BP IN'},
   {id:'tk', name:'Sản lượng TK', role:'TK'},
@@ -164,7 +165,7 @@ function render(){
   $('#nav').innerHTML = myViews().map(v => `<button role="tab" type="button" aria-selected="${v.id===VIEW}" data-v="${v.id}">${v.step?`<span class="stepno">${v.step}</span>`:''}${v.name}${badges[v.id]||''}</button>`).join('');
   const noRole = ROLES.length ? '' : '<div class="demo"><b>Tài khoản này chưa có vai trò hợp lệ</b>, nên chỉ xem được Tiến độ. Quản lý ghi ở cột VAI TRÒ (tab TAI_KHOAN) một hoặc nhiều vai trò: CS, BP IN, BP ÉP, KẾ HOẠCH MAY, TK, QUẢN LÝ, cách nhau bằng dấu phẩy. Sau đó bấm Đăng xuất rồi đăng nhập lại.</div>';
   const demo = (IS_LIVE ? '' : '<div class="demo"><b>Bản chạy thử.</b> Dữ liệu là đơn mẫu, chỉ lưu tạm trong trang này và mất khi tải lại. Bản thật ghi thẳng vào Google Sheet.</div>') + noRole;
-  const v = {quytrinh:vQuyTrinh, nhap:vNhap, tiendo:vTienDo, bpin:vBpIn, cuatoi:vCuaToi, may:vMay, bpep:vBpEp, slin:vSlIn, tk:vTk}[VIEW]();
+  const v = {xong:vXong, quytrinh:vQuyTrinh, nhap:vNhap, tiendo:vTienDo, bpin:vBpIn, cuatoi:vCuaToi, may:vMay, bpep:vBpEp, slin:vSlIn, tk:vTk}[VIEW]();
   const keepScroll = window.scrollY;
   $('#main').innerHTML = demo + v;
   window.scrollTo(0, keepScroll);
@@ -437,6 +438,37 @@ function vCuaToi(){
   </details>`;
 }
 
+/* ---------- Đơn hoàn thành: đã gửi xưởng may, chia theo tháng ---------- */
+const doneAt = o => o.ngayGuiMay || (o.mayCapNhat || '').slice(0,10);
+function vXong(){
+  const L = D.lists;
+  let list = D.orders.filter(o => o.xuong && doneAt(o));
+  if (F.htCs) list = list.filter(o => o.cs === F.htCs);
+  if (F.htX) list = list.filter(o => o.xuong === F.htX);
+  if (F.htQ) { const q = F.htQ.toUpperCase(); list = list.filter(o => (o.ma+' '+o.ten).toUpperCase().indexOf(q) >= 0); }
+  list.sort((a,b) => doneAt(b).localeCompare(doneAt(a)) || b.ma.localeCompare(a.ma));
+  const months = Array.from(new Set(list.map(o => doneAt(o).slice(0,7))));
+  const curM = D.today.slice(0,7);
+  const onTime = o => !o.ngayKhach || !o.ngayTraMay || o.ngayTraMay <= o.ngayKhach;
+  const mLabel = m => 'Tháng ' + m.slice(5,7) + '/' + m.slice(0,4);
+  const block = m => {
+    const g = list.filter(o => doneAt(o).slice(0,7) === m);
+    const ao = g.reduce((s,o)=>s+mAo(o),0), qu = g.reduce((s,o)=>s+mQuan(o),0), late = g.filter(o=>!onTime(o)).length;
+    const open = m in F.htOpen ? F.htOpen[m] : (m === curM || m === months[0]);
+    return `<details class="grp month" data-month="${m}"${open?' open':''}>
+      <summary class="grp-h"><div><b>${mLabel(m)}</b> · ${g.length} đơn · ${ao.toLocaleString('vi-VN')} áo · ${qu.toLocaleString('vi-VN')} quần${late?` · <span class="stuck">${late} đơn xưởng trả sau ngày khách nhận</span>`:''}</div></summary>
+      <div class="tbox" style="border:0;border-radius:0"><table><thead><tr><th>Hoàn thành</th><th>Mã</th><th>Tên đơn</th><th>CS</th><th>Áo</th><th>Quần</th><th>Loại áo quần</th><th>Xưởng</th><th>In</th><th>Ép</th><th>Khách nhận</th><th>Xưởng trả</th></tr></thead><tbody>
+      ${g.map(o=>`<tr><td class="num"><b>${dm(doneAt(o))}</b></td><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td>${esc(o.cs)}</td><td class="num">${mAo(o)}</td><td class="num">${mQuan(o)}</td><td style="white-space:normal;min-width:160px">${esc(o.chiTiet||'—')}</td><td>${esc(o.xuong)}</td><td class="num">${dm(o.ngayDaIn)}</td><td class="num">${dm(o.ngayDaEp)}</td><td class="num">${dm(o.ngayKhach)}</td><td class="num${onTime(o)?'':' stuck'}">${dm(o.ngayTraMay)}</td></tr>`).join('')}
+      </tbody></table></div></details>`;
+  };
+  return `
+  <div class="vhead"><h2>Đơn hoàn thành</h2><p class="lede">Đơn đã xếp xưởng may được tính là hoàn thành, theo <b>ngày gửi may</b>. Mới nhất ở trên, chia theo tháng. Bấm tên tháng để mở hoặc thu gọn, bấm mã đơn để xem lịch sử.</p></div>
+  <div class="bar"><div class="grow"><input type="search" id="htq" placeholder="Tìm mã hoặc tên đơn" value="${esc(F.htQ)}" aria-label="Tìm đơn"></div>
+    <select id="htcs" aria-label="CS">${opts(L['CS'], F.htCs, 'Mọi CS')}</select>
+    <select id="htx" aria-label="Xưởng">${opts(L['XƯỞNG MAY'], F.htX, 'Mọi xưởng')}</select></div>
+  ${months.length ? months.map(block).join('') : '<div class="empty">Chưa có đơn nào hoàn thành khớp bộ lọc.</div>'}`;
+}
+
 /* ---------- 5. Kế hoạch may ---------- */
 function vMay(){
   const L = D.lists;
@@ -629,6 +661,10 @@ function bind(){
   main.querySelectorAll('[data-epundo]').forEach(b => b.onclick = () => bulk([b.dataset.epundo], 'ep', {tienDo:'Đã in'}, 'Đã hoàn tác, đơn quay lại Chờ ép'));
   on('mq','input', e => { F.mayQ = e.target.value; rerenderKeep('mq'); });
   on('mx','change', e => { F.mayX = e.target.value; render(); });
+  on('htq','input', e => { F.htQ = e.target.value; rerenderKeep('htq'); });
+  on('htcs','change', e => { F.htCs = e.target.value; render(); });
+  on('htx','change', e => { F.htX = e.target.value; render(); });
+  main.querySelectorAll('details.month').forEach(d => d.addEventListener('toggle', () => { F.htOpen[d.dataset.month] = d.open; }));
   // Sản lượng TK
   const ft = $('#fTk');
   if (ft) {

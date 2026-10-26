@@ -40,6 +40,14 @@ const MOCK = (() => {
    ['H2610-161','DEAGLES - LÊ MINH','HOOPS','TRINH',M1,'2026-10-15','2026-10-17','2026-10-20','AN THỨC',83,52,'2026-10-17','C1','PRE NGƯỢC'],
    ['H2610-170','DRAGONS - JEROME','HOOPS','VY',M3,'2026-10-14','2026-10-19','2026-10-26','HẢO',27,25,'2026-10-19','C2','PRE NGƯỢC'],
   ].forEach((x,n) => orders.push(mk(x[0],x[1],x[2],x[3],x[4],x[5],x[6],x[7],'Đã ép',x[8],Object.assign(DONE(x[11],x[8],x[12],n+1,x[9],x[10],x[13],x[9]),EP(x[11]),{inCapNhat:x[11]+' 17:00',slAo:x[9],slQuan:x[10],confirm:true,xuong:x[2]==='AKU'?'HÒA NHƠN':'CMT8',ngayGuiMay:x[11],ngayTraMay:x[7]}))));
+  // Đơn hoàn thành mẫu các tháng trước (cho màn hình Đơn hoàn thành)
+  [['H2609-201','TDS U15 - REO','HOOPS','QUYÊN','2026-09-24','2026-09-26','2026-09-30','AN THỨC',40,40,'40 áo bo · 40 quần lưng thường'],
+   ['H2609-188','PHAN THIẾT - ĐĂNG KHOA','HOOPS','TRINH','2026-09-18','2026-09-21','2026-09-27','VĂN TÀI',22,22,'22 áo thun · 22 quần lưng rời'],
+   ['A2609-077','Wollongong Wolves - Sam Bell','AKU','HOÀ','2026-09-12','2026-09-15','2026-09-22','HẢO',60,0,'60 áo bóng đá cổ tim'],
+   ['H2609-150','LÊ QUÝ ĐÔN - HÀ MINH HIẾU','HOOPS','VY','2026-09-05','2026-09-08','2026-09-12','AN THỨC',15,15,'15 áo raglan · 15 quần 4 mảnh'],
+   ['H2608-260','MERCHANDISE HÀ NỘI 2026','HOOPS','QUYÊN','2026-08-27','2026-08-29','2026-09-03','VĂN TÀI',120,0,'120 áo thun tay ngắn'],
+   ['A2608-041','Carrot FC - Kaan Akgunes','AKU','HOÀ','2026-08-20','2026-08-22','2026-08-28','HẢO',18,18,'18 áo bóng đá · 18 quần'],
+  ].forEach((x,n) => { const [ma,ten,th,cs,ie,gui,kh,ni,ao,qu,ct] = x; orders.push(mk(ma,ten,th,cs,M3,ie,ie,kh,'Đã ép',ni,Object.assign(DONE(ie,ni,'N'+(n%5+1),1,ao,qu,'PREMIUM'),EP(ie),{taoLuc:ie+' 09:00',slAo:ao,slQuan:qu,chiTiet:ct,confirm:true,xuong:th==='AKU'?'HÒA NHƠN':'CMT8',ngayGuiMay:gui,ngayTraMay:n===1?'2026-09-28':kh}))); });
   // Máy in mẫu theo người in; vài đơn có vải phối khác vải bo
   orders.forEach(o => { if (o.nguoiIn && o.tienDo !== 'Chờ in') o.mayIn = o.nguoiIn === 'VĂN TÀI' ? 'MÁY CŨ' : 'MÁY MỚI'; });
   [['H2610-246',8,'ELITE'],['H2610-237',4,'2 DA CỨNG'],['H2610-171',6,'Z2']].forEach(([ma,n,v]) => { const o = orders.find(x => x.ma === ma); o.slPhoi = n; o.vaiPhoi = v; });
