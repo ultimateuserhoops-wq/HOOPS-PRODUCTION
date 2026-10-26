@@ -225,3 +225,7 @@ td.wrap{white-space:normal;min-width:150px}
 .plan-l+.plan-l{margin-top:-1px}
 .sub-h{font-weight:800;font-size:13.5px;margin-top:4px}
 .modal-in textarea{flex:none;height:76px;min-height:0;font-family:inherit}
+tr.pick.on td{background:var(--accent-soft, #e3f0ec)}
+tr.pick input[type=checkbox]{width:18px;height:18px}
+td input.in-num{width:80px}
+td input[data-f="ghiChu"]{min-width:160px}

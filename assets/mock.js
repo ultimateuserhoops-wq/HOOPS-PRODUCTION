@@ -95,6 +95,8 @@ const MOCK = (() => {
     {id:'TK1',ngay:'2026-10-17',tk:'NAM',ma:'H2610-231',ten:'7A1 - Nguyễn Đình Cẩm - Gấp',th:'HOOPS',rapAo:2,rapQuan:1,ghiChu:''},
     {id:'TK2',ngay:'2026-10-19',tk:'NAM',ma:'H2610-236',ten:'ƯU TIÊN - OLWS TIME - KIỀU OANH - GẤP',th:'HOOPS',rapAo:1,rapQuan:1,ghiChu:''},
     {id:'TK3',ngay:'2026-10-19',tk:'LINH',ma:'A2610-092',ten:'Huy Tran',th:'AKU',rapAo:1,rapQuan:0,ghiChu:''},
+    {id:'TK5',ngay:'2026-10-20',nhanLuc:'2026-10-20 08:10',tk:'NAM',ma:'H2610-252',ten:'20-10 TDS NAVY ( CÒN LẠI )',th:'HOOPS',rapAo:'',rapQuan:'',ghiChu:''},
+    {id:'TK6',ngay:'2026-10-20',nhanLuc:'2026-10-20 08:12',tk:'LINH',ma:'H2610-226',ten:'CHAMPION - ĐINH HUY HOÀNG',th:'HOOPS',rapAo:'',rapQuan:'',ghiChu:''},
     {id:'TK4',ngay:'2026-10-20',tk:'LINH',ma:'H2610-249',ten:'USH - Thịnh Thái',th:'HOOPS',rapAo:3,rapQuan:2,ghiChu:'sửa rập lần 2'},
   ];
   const ACC = {'tk@vidu.vn':{name:'NAM',roles:['TK']},'trinh@vidu.vn':{name:'TRINH',roles:['CS']},'quyen@vidu.vn':{name:'QUYÊN',roles:['CS','KẾ HOẠCH MAY']},'bpin@vidu.vn':{name:'VĂN TÀI',roles:['BP IN']},'ep@vidu.vn':{name:'BP ÉP',roles:['BP ÉP']},'qc@vidu.vn':{name:'QC',roles:['QC']},'quanly@vidu.vn':{name:'MINH',roles:['QUẢN LÝ']}};
@@ -146,6 +148,18 @@ const MOCK = (() => {
       if (!ten) throw new Error('Chọn mã đơn hoặc nhập tên đơn');
       const r = {id:'TK'+Date.now(), ngay:e.ngay, tk: a.roles.indexOf('QUẢN LÝ')>=0 && e.tk ? e.tk : a.name, ma:e.ma||'', ten, th, rapAo:Math.round(ao), rapQuan:Math.round(qu), ghiChu:clean(e.ghiChu)};
       tkEntries.push(r); return r;
+    },
+    claimTk: (t, mas) => {
+      const a = auth(t, ['TK']);
+      return mas.map(ma => { const o = orders.find(x => x.ma === ma); if (!o) throw new Error('Không tìm thấy mã đơn ' + ma);
+        const ex = tkEntries.find(e => e.ma === ma); if (ex) throw new Error(`Đơn ${ma} đã được ${ex.tk} nhận`);
+        const r = {id:'TK'+Date.now()+ma, ngay:'2026-10-20', nhanLuc:now(), tk:a.name, ma, ten:o.ten, th:o.th, rapAo:'', rapQuan:'', ghiChu:''}; tkEntries.push(r); return r; });
+    },
+    updateTkEntry: (t, id, e) => {
+      const a = auth(t, ['TK']); const r = tkEntries.find(x => x.id === id); if (!r) throw new Error('Không tìm thấy dòng');
+      if (a.roles.indexOf('QUẢN LÝ') < 0 && r.tk !== a.name) throw new Error('Chỉ sửa được đơn của chính bạn');
+      const ao = +e.rapAo||0, qu = +e.rapQuan||0; if (ao<0||qu<0) throw new Error('Số rập phải là số'); if (!ao && !qu) throw new Error('Nhập số rập áo hoặc số rập quần');
+      Object.assign(r, {rapAo:Math.round(ao), rapQuan:Math.round(qu), ghiChu:clean(e.ghiChu), ngay:'2026-10-20'}); return r;
     },
     deleteTkEntry: (t, id) => { const a = auth(t, ['TK']); const i = tkEntries.findIndex(x=>x.id===id); if (i<0) throw new Error('Không tìm thấy dòng cần xóa'); if (a.roles.indexOf('QUẢN LÝ')<0 && tkEntries[i].tk!==a.name) throw new Error('Chỉ xóa được dòng của chính bạn'); tkEntries.splice(i,1); return true; },
     getInit: (t) => ({me: auth(t), tkNames:['NAM','LINH'], tkEntries: (auth(t).roles.some(r=>r==='TK'||r==='QUẢN LÝ') ? tkEntries : []), lists, pushAt:'Đã in', orders, today:'2026-10-20', serverTime:'20/10/2026 ' + new Date().toTimeString().slice(0,5) + ' (chạy thử)'}),

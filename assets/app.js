@@ -19,7 +19,7 @@ const EDIT_IN = {};           // đơn đã in đang mở lại để sửa
 const EPF = {};               // thiết lập ép theo cuộn: EPF[key] = {epLe, ngay}
 const F = {q:'', cs:'', th:'', td:'chua', bpq:'', bpShowDone:false, myCs:'', mayX:'', mayQ:'', htQ:'', htCs:'', htX:'', htOpen:{}, tkMonth:'', tkWho:''};
 let SLM = '';
-const TKF = {ngay:'', tk:'', don:'', ten:'', th:'HOOPS', rapAo:'', rapQuan:'', ghiChu:'', noMa:false};
+const TKF = {ngay:'', tk:'', ten:'', th:'HOOPS', rapAo:'', rapQuan:'', ghiChu:''};
 const store = {get(k){try{return localStorage.getItem('tdie_'+k)}catch(e){return null}}, set(k,v){try{localStorage.setItem('tdie_'+k,v)}catch(e){}}, del(k){try{localStorage.removeItem('tdie_'+k)}catch(e){}}};
 let ROLES = [];
 const has = r => ROLES.indexOf('QUẢN LÝ') >= 0 || ROLES.indexOf(r) >= 0;
@@ -241,7 +241,7 @@ function vQuyTrinh(){
   if (has('KẾ HOẠCH MAY')) { const a = D.orders.filter(STAGES[4].test).length; todo.push({v:'may', t:`${a} đơn đã ép chờ xếp xưởng`, n:a}); }
   if (has('QC')) { const a = D.orders.filter(o => o.qcNhanLuc && !o.qcKetQua).length, b = D.orders.filter(o => o.xuatAnhLuc && !o.qcNhanLuc).length; todo.push({v:'qc', t:`${a} đơn chờ kiểm · ${b} đơn chờ xưởng trả`, n:a}); }
   if (has('CS')) { const m = D.orders.filter(o => o.qcKetQua === 'Đạt' && !o.hoanThanhLuc && (has('QUẢN LÝ') || o.cs === ME)).length; if (m) todo.push({v:'cuatoi', t:`${m} đơn QC đạt, chờ bấm Đơn đã hoàn thành`, n:m}); }
-  if (has('TK')) todo.push({v:'tk', t:'Nhập số rập áo, rập quần đã ra', n:-1});
+  if (has('TK')) todo.push({v:'tk', t:'Tick đơn bạn đã làm và nhập số rập', n:-1});
   return `
   <div class="vhead"><h2>Quy trình đơn hàng</h2><p class="lede">Mỗi đơn đi qua 7 chặng, từ lúc CS nhập đến lúc QC kiểm xong và CS bấm hoàn thành. Bấm tên chặng để mở màn hình làm việc, bấm mã đơn để xem toàn bộ lịch sử của đơn đó.</p></div>
   ${todo.length ? `<div class="sec"><h3>Việc của bạn</h3><div class="todo">${todo.map(x=>`<button type="button" class="todo-i" data-go="${x.v}"><span class="stepno">${(VIEWS.find(v=>v.id===x.v)||{}).step||'TK'}</span><span>${esc(x.t)}</span>${x.n>0?`<span class="badge hot">${x.n}</span>`:''}<span class="arr" aria-hidden="true">→</span></button>`).join('')}</div></div>` : ''}
@@ -718,34 +718,59 @@ function vSlIn(){
 }
 
 /* ---------- 7. Sản lượng TK ---------- */
+// TK tick chọn đơn mình đã làm từ danh sách CS đã nhập → đơn thành "của mình" (người khác không thấy) → nhập số rập → vào báo cáo
+const TK_SEL = new Set();
+const tkPending = e => e.rapAo === '' && e.rapQuan === '';
 function vTk(){
   const isQL = has('QUẢN LÝ');
   const names = (D.tkNames || []).slice(); if (ME && ROLES.indexOf('TK') >= 0 && names.indexOf(ME) < 0) names.unshift(ME);
   if (!TKF.ngay) TKF.ngay = D.today;
   if (!TKF.tk) TKF.tk = ROLES.indexOf('TK') >= 0 ? ME : (names[0] || '');
-  const months = Array.from(new Set((D.tkEntries||[]).map(e => e.ngay.slice(0,7)).concat([D.today.slice(0,7)]))).sort().reverse();
+  const all = D.tkEntries || [], claimed = new Set(all.filter(e => e.ma).map(e => e.ma));
+  const q = (F.tkQ || '').toUpperCase();
+  let pool = D.orders.filter(o => !claimed.has(o.ma) && !o.hoanThanhLuc && (!q || (o.ma+' '+o.ten+' '+o.cs).toUpperCase().indexOf(q) >= 0))
+    .sort((a,b) => (b.taoLuc||b.ngayFinal||'').localeCompare(a.taoLuc||a.ngayFinal||''));
+  const poolN = pool.length; pool = pool.slice(0, 40);
+  [...TK_SEL].forEach(m => { if (claimed.has(m)) TK_SEL.delete(m); });
+  const mine = all.filter(e => tkPending(e) && (isQL || e.tk === ME)).sort((a,b) => (b.nhanLuc||b.ngay).localeCompare(a.nhanLuc||a.ngay));
+  const done = all.filter(e => !tkPending(e));
+  const months = Array.from(new Set(done.map(e => e.ngay.slice(0,7)).concat([D.today.slice(0,7)]))).sort().reverse();
   if (!F.tkMonth) F.tkMonth = D.today.slice(0,7);
   const who = isQL ? F.tkWho : ME;
-  let rows = (D.tkEntries||[]).filter(e => e.ngay.slice(0,7) === F.tkMonth && (!who || e.tk === who));
-  rows.sort((a,b) => b.ngay.localeCompare(a.ngay) || b.id.localeCompare(a.id));
-  const sumA = rows.reduce((s,e)=>s+e.rapAo,0), sumQ = rows.reduce((s,e)=>s+e.rapQuan,0);
-  const orderOpts = D.orders.slice().sort((a,b)=>(b.taoLuc||'').localeCompare(a.taoLuc||'')).map(o => `<option value="${esc(o.ma)} · ${esc(o.ten)}"></option>`).join('');
+  const rows = done.filter(e => e.ngay.slice(0,7) === F.tkMonth && (!who || e.tk === who)).sort((a,b) => b.ngay.localeCompare(a.ngay) || b.id.localeCompare(a.id));
+  const sumA = rows.reduce((s,e)=>s+(+e.rapAo||0),0), sumQ = rows.reduce((s,e)=>s+(+e.rapQuan||0),0);
   const mLabel = m => m.slice(5,7)+'/'+m.slice(0,4);
+  const byTk = isQL ? names.map(n => { const r = done.filter(e => e.ngay.slice(0,7) === F.tkMonth && e.tk === n); return {n, don:r.length, ao:r.reduce((s,e)=>s+(+e.rapAo||0),0), qu:r.reduce((s,e)=>s+(+e.rapQuan||0),0), cho:all.filter(e => tkPending(e) && e.tk === n).length}; }) : [];
   return `
-  <div class="vhead"><h2>Sản lượng rập – Thiết kế</h2><p class="lede">Mỗi lần ra xong file rập, nhập số rập áo và rập quần cho đơn đó. Số liệu lưu ở bảng riêng SAN_LUONG_TK và cộng vào tab báo cáo BC - SẢN LƯỢNG TK.</p></div>
-  <form class="form" id="fTk" autocomplete="off">
+  <div class="vhead"><h2>Thiết kế · sản lượng rập</h2><p class="lede">1. Tick những đơn bạn đã làm trong danh sách CS đã nhập, bấm <b>Nhận đơn</b>. 2. Đơn chuyển xuống mục <b>Đơn của bạn</b>, chỉ bạn thấy; nhập số rập áo, rập quần rồi Lưu. 3. Số liệu vào báo cáo sản lượng, quản lý xem được.</p></div>
+  <div class="sec"><h3>Đơn CS đã nhập · tick đơn bạn đã làm <span class="badge">${poolN}</span></h3>
+    <div class="bar"><div class="grow"><input type="search" id="tkq" placeholder="Tìm mã, tên đơn hoặc CS" value="${esc(F.tkQ||'')}" aria-label="Tìm đơn"></div>
+      <button class="btn" type="button" id="tkClaim"${TK_SEL.size?'':' disabled'}>Nhận ${TK_SEL.size||''} đơn đã chọn</button></div>
+    ${pool.length ? `<div class="tbox"><table><thead><tr><th></th><th>Mã</th><th>Tên đơn</th><th>CS</th><th>Ngày nhập</th><th>Khách nhận</th></tr></thead><tbody>
+    ${pool.map(o=>`<tr class="pick${TK_SEL.has(o.ma)?' on':''}"><td><input type="checkbox" data-tkpick="${esc(o.ma)}" aria-label="Chọn ${esc(o.ma)}"${TK_SEL.has(o.ma)?' checked':''}></td><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td>${esc(o.cs)}</td><td class="num">${dm((o.taoLuc||o.ngayFinal||'').slice(0,10))}</td><td class="num">${dm(o.ngayKhach)}</td></tr>`).join('')}
+    </tbody></table></div>${poolN > pool.length ? `<div class="hint" style="margin-top:6px">Đang hiện 40 đơn mới nhất trong ${poolN} đơn. Gõ tìm để thấy đơn cũ hơn.</div>` : ''}` : '<div class="empty">Không còn đơn nào chưa có người nhận.</div>'}
+  </div>
+  <div class="sec"><h3>${isQL ? 'Đơn thiết kế đã nhận, chờ nhập số rập' : 'Đơn của bạn · nhập số rập'} <span class="badge${mine.length?' hot':''}">${mine.length}</span></h3>
+    ${mine.length ? `<div class="tbox"><table><thead><tr>${isQL?'<th>Thiết kế</th>':''}<th>Mã</th><th>Tên đơn</th><th>Rập áo</th><th>Rập quần</th><th>Ghi chú</th><th></th></tr></thead><tbody>
+    ${mine.map(e=>`<tr data-tkrow="${esc(e.id)}">${isQL?`<td>${esc(e.tk)}</td>`:''}<td class="mono">${esc(e.ma||'—')}</td><td class="name">${esc(e.ten)}</td>
+      <td><input class="in-num" type="number" min="0" inputmode="numeric" data-f="rapAo" aria-label="Rập áo ${esc(e.ma)}"></td>
+      <td><input class="in-num" type="number" min="0" inputmode="numeric" data-f="rapQuan" aria-label="Rập quần ${esc(e.ma)}"></td>
+      <td><input type="text" data-f="ghiChu" placeholder="Ví dụ: sửa rập lần 2" aria-label="Ghi chú ${esc(e.ma)}"></td>
+      <td><div class="actions" style="flex-wrap:nowrap"><button class="btn sm" type="button" data-tksave="${esc(e.id)}">Lưu</button><button class="btn ghost sm" type="button" data-tkdel="${esc(e.id)}">Bỏ chọn</button></div></td></tr>`).join('')}
+    </tbody></table></div>` : `<div class="empty">${isQL ? 'Không có đơn nào đang chờ nhập số rập.' : 'Chưa nhận đơn nào. Tick đơn ở danh sách trên rồi bấm Nhận đơn.'}</div>`}
+  </div>
+  <details class="sec"><summary>Đơn chưa có mã? Nhập tay</summary>
+  <form class="form" id="fTk" autocomplete="off" style="margin-top:8px">
     <div class="f s2"><label for="tk_ngay">Ngày <span class="req">*</span></label><input type="date" id="tk_ngay" data-tk="ngay" value="${esc(TKF.ngay)}"></div>
     <div class="f s2"><label for="tk_who">Thiết kế</label>${isQL ? `<select id="tk_who" data-tk="tk">${opts(names, TKF.tk, '— chọn —')}</select>` : `<div style="padding:7px 0"><b>${esc(ME)}</b></div>`}</div>
-    <div class="f s2"><span class="lb">Đơn hàng</span><label class="chk" style="font-weight:600;font-size:13px"><input type="checkbox" id="tk_noma"${TKF.noMa?' checked':''}> Đơn chưa có mã</label></div>
-    ${TKF.noMa ? `
-    <div class="f s3"><label for="tk_ten">Tên đơn <span class="req">*</span></label><input type="text" id="tk_ten" data-tk="ten" value="${esc(TKF.ten)}"></div>
-    <div class="f s3"><span class="lb">Thương hiệu</span><div class="seg" role="group" aria-label="Thương hiệu">${D.lists['THƯƠNG HIỆU'].map(t=>`<button type="button" aria-pressed="${TKF.th===t}" data-tkth="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>` : `
-    <div class="f s6"><label for="tk_don">Chọn mã đơn <span class="req">*</span></label><input type="search" id="tk_don" list="dlOrders" data-tk="don" value="${esc(TKF.don)}" placeholder="Gõ mã hoặc tên đơn rồi chọn trong danh sách"><datalist id="dlOrders">${orderOpts}</datalist></div>`}
+    <div class="f s2"><span class="lb">Thương hiệu</span><div class="seg" role="group" aria-label="Thương hiệu">${D.lists['THƯƠNG HIỆU'].map(t=>`<button type="button" aria-pressed="${TKF.th===t}" data-tkth="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>
+    <div class="f s6"><label for="tk_ten">Tên đơn <span class="req">*</span></label><input type="text" id="tk_ten" data-tk="ten" value="${esc(TKF.ten)}"></div>
     <div class="f s2"><label for="tk_ao">Số rập áo</label><input type="number" min="0" inputmode="numeric" id="tk_ao" data-tk="rapAo" value="${esc(TKF.rapAo)}"></div>
     <div class="f s2"><label for="tk_quan">Số rập quần</label><input type="number" min="0" inputmode="numeric" id="tk_quan" data-tk="rapQuan" value="${esc(TKF.rapQuan)}"></div>
-    <div class="f s2"><label for="tk_gc">Ghi chú</label><input type="text" id="tk_gc" data-tk="ghiChu" value="${esc(TKF.ghiChu)}" placeholder="Ví dụ: sửa rập lần 2"></div>
+    <div class="f s2"><label for="tk_gc">Ghi chú</label><input type="text" id="tk_gc" data-tk="ghiChu" value="${esc(TKF.ghiChu)}"></div>
     <div class="s6 actions"><button class="btn" type="submit" id="tkSave">Lưu sản lượng</button></div>
-  </form>
+  </form></details>
+  <div class="sec"><h3>${isQL ? 'Báo cáo sản lượng thiết kế' : 'Sản lượng của bạn'}</h3>
   <div class="bar"><span style="font-weight:700">Tháng</span><select id="tkMonth" aria-label="Tháng">${months.map(m=>`<option value="${m}"${m===F.tkMonth?' selected':''}>${mLabel(m)}</option>`).join('')}</select>
     ${isQL ? `<select id="tkWho" aria-label="Thiết kế">${opts(names, F.tkWho, 'Mọi thiết kế')}</select>` : ''}</div>
   <div class="kpis">
@@ -754,31 +779,40 @@ function vTk(){
     <div class="kpi"><small>Rập quần</small><b>${sumQ.toLocaleString('vi-VN')}</b></div>
     <div class="kpi"><small>Tổng rập</small><b>${(sumA+sumQ).toLocaleString('vi-VN')}</b></div>
   </div>
+  ${isQL && !F.tkWho ? `<div class="tbox" style="margin-bottom:12px"><table><thead><tr><th>Thiết kế</th><th>Số đơn</th><th>Rập áo</th><th>Rập quần</th><th>Tổng rập</th><th>Đang chờ nhập số</th></tr></thead><tbody>
+    ${byTk.map(r=>`<tr><td><b>${esc(r.n)}</b></td><td class="num">${r.don}</td><td class="num">${r.ao}</td><td class="num">${r.qu}</td><td class="num"><b>${r.ao+r.qu}</b></td><td class="num">${r.cho||'—'}</td></tr>`).join('')}
+    </tbody></table></div>` : ''}
   ${rows.length ? `<div class="tbox"><table><thead><tr><th>Ngày</th>${isQL?'<th>Thiết kế</th>':''}<th>Mã</th><th>Tên đơn</th><th>Rập áo</th><th>Rập quần</th><th>Ghi chú</th><th></th></tr></thead><tbody>
-  ${rows.map(e=>`<tr><td class="num">${dm(e.ngay)}</td>${isQL?`<td>${esc(e.tk)}</td>`:''}<td class="mono">${esc(e.ma||'—')}</td><td class="name">${esc(e.ten)}</td><td class="num">${e.rapAo}</td><td class="num">${e.rapQuan}</td><td style="white-space:normal">${esc(e.ghiChu)}</td><td>${(isQL||e.tk===ME)?`<button class="btn ghost sm" type="button" data-tkdel="${esc(e.id)}">Xóa</button>`:''}</td></tr>`).join('')}
-  </tbody></table></div>` : '<div class="empty">Chưa có dòng nào trong tháng này.</div>'}`;
+  ${rows.map(e=>`<tr><td class="num">${dm(e.ngay)}</td>${isQL?`<td>${esc(e.tk)}</td>`:''}<td class="mono">${esc(e.ma||'—')}</td><td class="name">${esc(e.ten)}</td><td class="num">${e.rapAo||0}</td><td class="num">${e.rapQuan||0}</td><td style="white-space:normal">${esc(e.ghiChu)}</td><td>${(isQL||e.tk===ME)?`<button class="btn ghost sm" type="button" data-tkdel="${esc(e.id)}">Xóa</button>`:''}</td></tr>`).join('')}
+  </tbody></table></div>` : '<div class="empty">Chưa có dòng nào trong tháng này.</div>'}
+  </div>`;
+}
+async function claimTk(){
+  const mas = [...TK_SEL]; if (!mas.length) return;
+  try { const r = await api('claimTk', mas); D.tkEntries = (D.tkEntries||[]).concat(r); TK_SEL.clear(); toast(`Đã nhận ${r.length} đơn. Nhập số rập ở mục Đơn của bạn.`); render(); }
+  catch (err) { if (errMsg(err) === '__auth__') return; toast(errMsg(err), true); }
+}
+async function saveTkRow(id){
+  const tr = document.querySelector(`[data-tkrow="${CSS.escape(id)}"]`), g = f => tr.querySelector(`[data-f="${f}"]`).value.trim();
+  const e = {rapAo:g('rapAo'), rapQuan:g('rapQuan'), ghiChu:g('ghiChu')};
+  try { const r = await api('updateTkEntry', id, e); Object.assign(D.tkEntries.find(x => x.id === id), r); toast(`Đã lưu: ${r.rapAo} rập áo, ${r.rapQuan} rập quần · ${r.ten}`); render(); }
+  catch (err) { if (errMsg(err) === '__auth__') return; toast(errMsg(err), true); }
 }
 async function saveTk(){
   const btn = $('#tkSave'); btn.disabled = true; btn.textContent = 'Đang lưu…';
-  const e = {ngay:TKF.ngay, tk:TKF.tk, rapAo:TKF.rapAo, rapQuan:TKF.rapQuan, ghiChu:TKF.ghiChu};
-  if (TKF.noMa) { e.ten = TKF.ten; e.th = TKF.th; }
-  else {
-    const m = String(TKF.don).split(' · ')[0].trim().toUpperCase();
-    if (!byKey(m)) { toast('Chọn mã đơn trong danh sách gợi ý, hoặc tick "Đơn chưa có mã".', true); btn.disabled = false; btn.textContent = 'Lưu sản lượng'; return; }
-    e.ma = m;
-  }
+  const e = {ngay:TKF.ngay, tk:TKF.tk, rapAo:TKF.rapAo, rapQuan:TKF.rapQuan, ghiChu:TKF.ghiChu, ten:TKF.ten, th:TKF.th};
   try {
     const r = await api('addTkEntry', e);
     D.tkEntries = (D.tkEntries||[]).concat([r]);
-    Object.assign(TKF, {don:'', ten:'', rapAo:'', rapQuan:'', ghiChu:''});
+    Object.assign(TKF, {ten:'', rapAo:'', rapQuan:'', ghiChu:''});
     F.tkMonth = r.ngay.slice(0,7);
     toast(`Đã lưu: ${r.rapAo} rập áo, ${r.rapQuan} rập quần · ${r.ten}`); render();
   } catch (err) { if (errMsg(err) === '__auth__') return; toast(errMsg(err), true); btn.disabled = false; btn.textContent = 'Lưu sản lượng'; }
 }
 async function delTk(id){
   const b = document.querySelector(`[data-tkdel="${CSS.escape(id)}"]`);
-  if (b && b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Bấm lần nữa để xóa'; setTimeout(() => { if (b.isConnected) { b.dataset.armed = ''; b.textContent = 'Xóa'; } }, 4000); return; }
-  try { await api('deleteTkEntry', id); D.tkEntries = D.tkEntries.filter(e => e.id !== id); toast('Đã xóa dòng'); render(); }
+  if (b && b.dataset.armed !== '1') { b.dataset.armed = '1'; const t0 = b.textContent; b.textContent = 'Bấm lần nữa'; setTimeout(() => { if (b.isConnected) { b.dataset.armed = ''; b.textContent = t0; } }, 4000); return; }
+  try { await api('deleteTkEntry', id); D.tkEntries = D.tkEntries.filter(e => e.id !== id); toast('Đã bỏ / xóa dòng'); render(); }
   catch (err) { if (errMsg(err) === '__auth__') return; toast(errMsg(err), true); }
 }
 
@@ -851,13 +885,16 @@ function bind(){
   if (ft) {
     ft.querySelectorAll('[data-tk]').forEach(el => el.addEventListener(el.tagName==='SELECT'||el.type==='date' ? 'change' : 'input', () => { TKF[el.dataset.tk] = el.value; }));
     ft.querySelectorAll('[data-tkth]').forEach(b => b.onclick = () => { TKF.th = b.dataset.tkth; render(); });
-    on('tk_noma','change', e => { TKF.noMa = e.target.checked; render(); });
     ft.addEventListener('submit', ev => { ev.preventDefault(); saveTk(); });
   }
   on('tkMonth','change', e => { F.tkMonth = e.target.value; render(); });
   on('slMonth','change', e => { SLM = e.target.value; render(); });
   on('tkWho','change', e => { F.tkWho = e.target.value; render(); });
   main.querySelectorAll('[data-tkdel]').forEach(b => b.onclick = () => delTk(b.dataset.tkdel));
+  main.querySelectorAll('[data-tkpick]').forEach(c => c.onchange = () => { c.checked ? TK_SEL.add(c.dataset.tkpick) : TK_SEL.delete(c.dataset.tkpick); const b = $('#tkClaim'); b.disabled = !TK_SEL.size; b.textContent = `Nhận ${TK_SEL.size||''} đơn đã chọn`; c.closest('tr').classList.toggle('on', c.checked); });
+  on('tkClaim','click', claimTk);
+  on('tkq','input', e => { F.tkQ = e.target.value; rerenderKeep('tkq'); });
+  main.querySelectorAll('[data-tksave]').forEach(b => b.onclick = () => saveTkRow(b.dataset.tksave));
 
   // Form nhập đơn
   const f = $('#fNhap');
