@@ -190,7 +190,11 @@ function notifs(){
   if (has('CS')) D.orders.filter(o => mineCs(o) && o.tienDo === 'Đã in' && recent(o.ngayDaIn) && !o.confirm).forEach(o =>
     out.push({id:'in|'+o.ma, at:o.ngayDaIn, ma:o.ma, go:'cuatoi', t:`Đơn ${o.ma} đã in xong, cần nhập số lượng`, d:o.ten}));
   if (has('CS')) D.orders.filter(o => mineCs(o) && o.qcKetQua && !o.hoanThanhLuc).forEach(o =>
-    out.push({id:'qc|'+o.ma+'|'+o.qcKetQua, at:o.qcLuc||D.today, hot:o.qcKetQua==='Lỗi', ma:o.ma, go:'cuatoi', t:o.qcKetQua==='Đạt' ? `QC đạt ${o.ma}, bấm Đơn đã hoàn thành` : `QC báo lỗi ${o.ma}`, d:o.qcKetQua==='Đạt' ? o.ten : o.qcGhiChu}));
+    out.push({id:'qc|'+o.ma+'|'+o.qcKetQua, at:o.qcLuc||D.today, hot:o.qcKetQua==='Lỗi', ma:o.ma, go:'cuatoi', t:o.qcKetQua==='Đạt' ? `QC đạt ${o.ma}, bấm Đơn đã hoàn thành` : `QC báo ${o.qcLoai==='Thiếu'?'thiếu áo':o.qcLoai==='In lại'?'in lại':'lỗi'} ${o.ma}`, d:o.qcKetQua==='Đạt' ? o.ten : o.qcGhiChu}));
+  if (has('BP IN')) D.orders.filter(o => o.qcKetQua === 'Lỗi' && o.qcLoai === 'In lại' && !o.qcInLaiLuc && !o.hoanThanhLuc).forEach(o =>
+    out.push({id:'qcin|'+o.ma+'|'+o.qcLuc, at:o.qcLuc||D.today, hot:true, go:'bpin', t:`QC báo in lại ${o.ma} · ${o.ten}`, d:o.qcGhiChu}));
+  if (has('QC')) D.orders.filter(o => o.qcKetQua === 'Lỗi' && o.qcInLaiLuc && !o.hoanThanhLuc).forEach(o =>
+    out.push({id:'qcre|'+o.ma+'|'+o.qcInLaiLuc, at:o.qcInLaiLuc, go:'qc', t:`BP In đã in lại ${o.ma}, kiểm lại`, d:o.qcGhiChu}));
   if (has('QC')) { const n = D.orders.filter(o => o.xuatAnhLuc && !o.qcNhanLuc && diff(o.ngayTraMay, D.today) !== null && diff(o.ngayTraMay, D.today) <= 0).length; if (n) out.push({id:'qcn|'+D.today+'|'+n, at:D.today, go:'qc', t:`${n} đơn đến ngày cần nhận hàng từ xưởng`, d:''}); }
   if (has('KẾ HOẠCH MAY')) { const n = D.orders.filter(o => o.tienDo === 'Đã ép' && !o.xuong).length; if (n) out.push({id:'may|'+D.today+'|'+n, at:D.today, go:'may', t:`${n} đơn đã ép chờ xếp xưởng`, d:''}); }
   return out.sort((a,b) => (b.hot?1:0)-(a.hot?1:0) || String(b.at).localeCompare(String(a.at)));
@@ -363,6 +367,7 @@ function vBpIn(){
     .sort((a,b) => (EDIT_IN[b.ma]?1:0)-(EDIT_IN[a.ma]?1:0) || pLevel(a.uuTien)-pLevel(b.uuTien) || (a.ngayInEp||'9').localeCompare(b.ngayInEp||'9'));
   const backs = D.orders.filter(o => o.lyDoTraVe && !o.chuyenEp && o.tienDo === 'Đã in');
   const lechs = D.orders.filter(isLech);
+  const reprint = D.orders.filter(o => o.qcKetQua === 'Lỗi' && o.qcLoai === 'In lại' && !o.qcInLaiLuc && !o.hoanThanhLuc);
   // Người in đăng nhập chỉ thấy cuộn của mình; quản lý / tài khoản chung thấy tất cả, chia theo người in
   const meIn = L['NGƯỜI IN'].indexOf(ME) >= 0 && !has('QUẢN LÝ');
   const doneAll = rollGroups(D.orders.filter(o => o.tienDo === 'Đã in' && !o.chuyenEp && !EDIT_IN[o.ma] && match(o)));
@@ -416,6 +421,7 @@ function vBpIn(){
   <div class="vhead"><h2>BP In cập nhật tiến độ</h2><p class="lede">Tìm theo mã hoặc tên đơn. Khi in xong, chọn <b>Đã in</b>, ghi máy in, người in, cuộn, số lượng và vải từng phần (thân, bo, phối) rồi bấm Lưu. Đơn sẽ xuống danh sách đã in bên dưới và về danh sách của CS. Sắp lại thứ tự trong cuộn, rồi tick <b>Confirm</b> để chuyển sang BP Ép.</p></div>
   <datalist id="dlCuon">${(L['CUỘN']||[]).map(c=>`<option value="${esc(c)}"></option>`).join('')}</datalist>
   ${backs.length ? `<div class="alert"><b>BP Ép trả về ${backs.length} đơn</b>${backs.map(o=>`<div class="alert-r"><button type="button" class="olink-inline mono" data-open="${esc(o.ma)}">${esc(o.ma)}</button> ${esc(o.ten)} · cuộn ${esc(o.cuon||'—')}<div><b>Lý do:</b> ${esc(o.lyDoTraVe)} <span class="hint">(${esc(dm(o.traVeLuc)+' '+(o.traVeLuc||'').slice(11,16))})</span></div></div>`).join('')}<div class="hint">Sửa xong thì tick lại Confirm chuyển ép ở danh sách đã in bên dưới.</div></div>` : ''}
+  ${reprint.length ? `<div class="alert"><b>QC báo in lại · ${reprint.length} đơn</b>${reprint.map(o=>`<div class="alert-r"><button type="button" class="olink-inline mono" data-open="${esc(o.ma)}">${esc(o.ma)}</button> ${esc(o.ten)} · CS ${esc(o.cs)} · xưởng ${esc(o.xuong||'—')}<div><b>Cần in lại:</b> ${esc(o.qcGhiChu)} <span class="hint">(${esc(dm(o.qcLuc)+' '+(o.qcLuc||'').slice(11,16))})</span></div><div class="actions" style="margin-top:6px"><button class="btn sm" type="button" data-qcreprint="${esc(o.ma)}">Đã in lại xong</button></div></div>`).join('')}</div>` : ''}
   ${lechs.length ? `<div class="alert"><b>Lệch số lượng với CS · ${lechs.length} đơn, cần đếm lại</b>${lechs.map(o=>`<div class="alert-r"><button type="button" class="olink-inline mono" data-open="${esc(o.ma)}">${esc(o.ma)}</button> ${esc(o.ten)} · CS ${esc(o.cs)} · cuộn ${esc(o.cuon||'—')}<div><b>${esc(lechOf(o).join(' · '))}</b>${lechChecked(o)?' <span class="hint">· đã báo CS: số BP In đúng</span>':''}</div><div class="actions" style="margin-top:6px"><button class="btn sm" type="button" data-reedit="${esc(o.ma)}">Sửa số BP In</button>${lechChecked(o)?'':`<button class="btn ghost sm" type="button" data-lechok="${esc(o.ma)}">Số BP In đúng, báo CS sửa</button>`}</div></div>`).join('')}</div>` : ''}
   <div class="bar"><div class="grow"><input type="search" id="bpq" placeholder="Nhập mã (ví dụ H2610-237) hoặc tên đơn" value="${esc(F.bpq)}" aria-label="Tìm đơn"></div></div>
   <div class="sec"><h3>Cần in <span class="badge">${todo.length}</span></h3>${todo.length ? `<div class="cards">${todo.map(card).join('')}</div>` : '<div class="empty">Không còn đơn nào cần in. Đơn mới CS nhập sẽ hiện ở đây.</div>'}</div>
@@ -507,7 +513,7 @@ function vCuaToi(){
   <div class="sec"><h3>Đã CONFIRM, chờ xếp xưởng <span class="badge">${done.length}</span></h3>${done.length?`<div class="cards">${done.map(card).join('')}</div>`:'<div class="empty">Không có.</div>'}</div>
   <div class="sec"><h3>Đã gửi xưởng · bấm hoàn thành khi QC đạt <span class="badge${toFinish.some(o=>o.qcKetQua==='Đạt')?' hot':''}">${toFinish.length}</span></h3>
   ${toFinish.length ? `<div class="tbox"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>Xưởng</th><th>Áo</th><th>Quần</th><th>Khách nhận</th><th>QC</th><th></th></tr></thead><tbody>
-  ${toFinish.map(o=>`<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.qcKetQua==='Lỗi'?`<div class="warn">QC báo lỗi: ${esc(o.qcGhiChu)}</div>`:''}</td><td>${esc(o.xuong)}</td><td class="num">${mAo(o)}</td><td class="num">${mQuan(o)}</td><td class="num">${dm(o.ngayKhach)}</td><td>${qcChip(o)}</td><td>${o.qcKetQua==='Đạt'?`<button class="btn sm" type="button" data-finish="${esc(o.ma)}">Đơn đã hoàn thành</button>`:'<span class="hint">chờ QC</span>'}</td></tr>`).join('')}
+  ${toFinish.map(o=>`<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.qcKetQua==='Lỗi'?`<div class="warn">QC báo ${esc(o.qcLoai==='Thiếu'?'thiếu':o.qcLoai==='In lại'?'in lại':'lỗi')}: ${esc(o.qcGhiChu)}${o.qcInLaiLuc?' · BP In đã in lại':''}</div>`:''}</td><td>${esc(o.xuong)}</td><td class="num">${mAo(o)}</td><td class="num">${mQuan(o)}</td><td class="num">${dm(o.ngayKhach)}</td><td>${qcChip(o)}</td><td>${o.qcKetQua==='Đạt'?`<button class="btn sm" type="button" data-finish="${esc(o.ma)}">Đơn đã hoàn thành</button>`:'<span class="hint">chờ QC</span>'}</td></tr>`).join('')}
   </tbody></table></div>` : '<div class="empty">Không có đơn nào đang ở xưởng.</div>'}</div>
   <details class="sec"><summary>Đơn đang ở BP In (${waiting.length})</summary>
   ${waiting.length?`<div class="tbox" style="margin-top:8px"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>Tiến độ</th><th>Xong in ép</th><th>Còn lại</th></tr></thead><tbody>${waiting.map(o=>`<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td>${oChip(o)}</td><td class="num">${dm(o.ngayInEp)}</td><td>${remTag(o)}</td></tr>`).join('')}</tbody></table></div>`:''}
@@ -515,7 +521,7 @@ function vCuaToi(){
 }
 
 /* ---------- 6. QC: nhận hàng từ xưởng, kiểm tra, báo Đạt / Lỗi ---------- */
-const qcChip = o => o.qcKetQua === 'Đạt' ? '<span class="chip t-ep">QC đạt</span>' : o.qcKetQua === 'Lỗi' ? '<span class="chip r-red">QC lỗi</span>' : o.qcNhanLuc ? '<span class="chip t-dang">Đã nhận, đang kiểm</span>' : '<span class="chip t-cho">Chờ xưởng trả</span>';
+const qcChip = o => o.qcKetQua === 'Đạt' ? '<span class="chip t-ep">QC đạt</span>' : o.qcKetQua === 'Lỗi' ? `<span class="chip r-red">QC ${o.qcLoai === 'Thiếu' ? 'báo thiếu' : o.qcLoai === 'In lại' ? (o.qcInLaiLuc ? 'in lại xong' : 'báo in lại') : 'lỗi'}</span>` : o.qcNhanLuc ? '<span class="chip t-dang">Đã nhận, đang kiểm</span>' : '<span class="chip t-cho">Chờ xưởng trả</span>';
 function vQc(){
   const L = D.lists;
   let list = D.orders.filter(o => o.xuatAnhLuc && !o.hoanThanhLuc);
@@ -524,26 +530,35 @@ function vQc(){
   const waitX = list.filter(o => !o.qcNhanLuc).sort(byNeed), checking = list.filter(o => o.qcNhanLuc && !o.qcKetQua).sort(byNeed), bad = list.filter(o => o.qcKetQua === 'Lỗi').sort(byNeed), ok = list.filter(o => o.qcKetQua === 'Đạt').sort(byNeed);
   const lr = o => [loaiOf(o,'ao'), loaiOf(o,'quan')].filter(Boolean).join(' · ');
   const tbl = (rows, act) => rows.length ? `<div class="tbox"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>CS</th><th>Áo</th><th>Quần</th><th>Loại áo quần</th><th>Gửi</th><th>Cần nhận</th><th>Khách nhận</th><th></th></tr></thead><tbody>
-    ${rows.map(o=>{ const n = diff(o.ngayTraMay, D.today); return `<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.qcGhiChu?`<div class="${o.qcKetQua==='Lỗi'?'warn':'hint'}">${esc(o.qcGhiChu)}</div>`:''}</td><td>${esc(o.cs)}</td><td class="num"><b>${mAo(o)}</b></td><td class="num"><b>${mQuan(o)}</b></td><td class="wrap">${esc(lr(o)||'—')}</td><td class="num">${dm(o.ngayGuiMay)}</td><td class="num${!o.qcNhanLuc&&n!==null&&n<0?' stuck':''}">${dm(o.ngayTraMay)}</td><td class="num">${dm(o.ngayKhach)}</td><td><div class="actions" style="flex-wrap:nowrap">${act(o)}</div></td></tr>`; }).join('')}
+    ${rows.map(o=>{ const n = diff(o.ngayTraMay, D.today); return `<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.qcGhiChu?`<div class="${o.qcKetQua==='Lỗi'?'warn':'hint'}">${o.qcKetQua==='Lỗi'?esc((QC_LOAI.find(x=>x.k===o.qcLoai)||{t:'Lỗi'}).t)+': ':''}${esc(o.qcGhiChu)}${o.qcInLaiLuc?' · <b>BP In đã in lại '+esc(dm(o.qcInLaiLuc))+'</b>':''}</div>`:''}</td><td>${esc(o.cs)}</td><td class="num"><b>${mAo(o)}</b></td><td class="num"><b>${mQuan(o)}</b></td><td class="wrap">${esc(lr(o)||'—')}</td><td class="num">${dm(o.ngayGuiMay)}</td><td class="num${!o.qcNhanLuc&&n!==null&&n<0?' stuck':''}">${dm(o.ngayTraMay)}</td><td class="num">${dm(o.ngayKhach)}</td><td><div class="actions" style="flex-wrap:nowrap">${act(o)}</div></td></tr>`; }).join('')}
     </tbody></table></div>` : '<div class="empty">Không có.</div>';
   const xs = x => L['XƯỞNG MAY'].map(w => { const r = x.filter(o => o.xuong === w); return r.length ? `<div class="sub-h">Xưởng ${esc(w)} · ${r.length} đơn</div>` + tbl(r, o => `<button class="btn sm" type="button" data-qcin="${esc(o.ma)}">Đã nhận hàng</button>`) : ''; }).join('') || '<div class="empty">Không có.</div>';
   return `
   <div class="vhead"><h2>QC</h2><p class="lede">Đơn Kế hoạch may đã gửi xưởng hiện ở đây. Khi xưởng trả hàng bấm <b>Đã nhận hàng</b>, kiểm xong bấm <b>Đạt</b> hoặc <b>Lỗi</b> (ghi lỗi gì). Đơn đạt sẽ báo cho CS phụ trách để CS bấm <b>Đơn đã hoàn thành</b>.</p></div>
   <div class="bar"><div class="grow"><input type="search" id="qcq" placeholder="Tìm mã hoặc tên đơn" value="${esc(F.qcQ||'')}" aria-label="Tìm đơn"></div></div>
   <div class="sec"><h3>Đã nhận, chờ kiểm <span class="badge${checking.length?' hot':''}">${checking.length}</span></h3>${tbl(checking, o => `<button class="btn sm" type="button" data-qcok="${esc(o.ma)}">Đạt</button><button class="btn ghost sm" type="button" data-qcbad="${esc(o.ma)}">Lỗi</button>`)}</div>
-  ${bad.length ? `<div class="sec"><h3>Lỗi, chờ xưởng sửa <span class="badge hot">${bad.length}</span></h3>${tbl(bad, o => `<button class="btn sm" type="button" data-qcok="${esc(o.ma)}">Kiểm lại: Đạt</button>`)}</div>` : ''}
+  ${bad.length ? `<div class="sec"><h3>Lỗi, chờ xử lý <span class="badge hot">${bad.length}</span></h3>${tbl(bad, o => `<button class="btn sm" type="button" data-qcok="${esc(o.ma)}">Kiểm lại: Đạt</button>`)}</div>` : ''}
   <div class="sec"><h3>Chờ xưởng trả hàng <span class="badge">${waitX.length}</span></h3>${xs(waitX)}</div>
   ${ok.length ? `<details class="sec"><summary>Đã đạt, chờ CS bấm hoàn thành (${ok.length})</summary><div style="margin-top:8px">${tbl(ok, o => `<button class="btn ghost sm" type="button" data-qcundo="${esc(o.ma)}">Hoàn tác</button>`)}</div></details>` : ''}`;
 }
+// Loại lỗi QC quyết định ai nhận tin: in lại → CS + BP In; thiếu → CS; lỗi may → CS + Kế hoạch may
+const QC_LOAI = [{k:'In lại', t:'Lỗi in, cần in lại', who:'CS và BP In', ph:'Ví dụ: áo số 10 tên NAM bị lem, in lại 1 thân'},
+  {k:'Thiếu', t:'Thiếu áo / quần', who:'CS', ph:'Ví dụ: thiếu 2 áo size L số 7, 9'},
+  {k:'Lỗi may', t:'Lỗi may, trả xưởng sửa', who:'CS và Kế hoạch may', ph:'Ví dụ: 2 áo may lệch cổ'}];
 function askQcBad(ma){
   const o = byKey(ma); if (!o) return;
+  let k = '';
   const m = document.createElement('div'); m.className = 'modal';
   m.innerHTML = `<form class="modal-in" role="dialog" aria-label="Báo lỗi QC"><b>QC lỗi · ${esc(o.ma)}</b><span class="hint">${esc(o.ten)} · xưởng ${esc(o.xuong)}</span>
-    <div class="f"><label for="qcWhy">Lỗi gì (CS và Kế hoạch may sẽ thấy)</label><textarea id="qcWhy" rows="2" placeholder="Ví dụ: 2 áo may lệch cổ, trả xưởng sửa"></textarea></div>
+    <div class="seg seg-full" role="group" aria-label="Loại lỗi">${QC_LOAI.map(x=>`<button type="button" aria-pressed="false" data-ql="${esc(x.k)}">${esc(x.t)}</button>`).join('')}</div>
+    <div class="f"><label for="qcWhy" id="qcLb">Chọn loại lỗi ở trên</label><textarea id="qcWhy" rows="2" placeholder="Ghi rõ áo nào, số nào, tên nào"></textarea></div>
     <div class="actions"><button class="btn" type="submit">Báo lỗi</button><button class="btn ghost" type="button" data-cl>Hủy</button></div></form>`;
-  document.body.appendChild(m); const ta = m.querySelector('#qcWhy'); ta.focus();
+  document.body.appendChild(m); const ta = m.querySelector('#qcWhy');
+  m.querySelectorAll('[data-ql]').forEach(b => b.onclick = () => { k = b.dataset.ql; const x = QC_LOAI.find(y => y.k === k);
+    m.querySelectorAll('[data-ql]').forEach(z => z.setAttribute('aria-pressed', z === b)); m.querySelector('#qcLb').textContent = `${x.t === 'Thiếu áo / quần' ? 'Thiếu áo gì' : 'Lỗi gì, áo nào'} (${x.who} sẽ nhận tin)`; ta.placeholder = x.ph; ta.focus(); });
   m.querySelector('[data-cl]').onclick = () => m.remove();
-  m.querySelector('form').onsubmit = ev => { ev.preventDefault(); if (!ta.value.trim()) { toast('Ghi lỗi để CS biết', true); return; } m.remove(); bulk([ma], 'qc', {qcKetQua:'Lỗi', qcGhiChu:ta.value.trim()}, 'Đã báo lỗi QC'); };
+  m.querySelector('form').onsubmit = ev => { ev.preventDefault(); if (!k) { toast('Chọn loại lỗi: in lại, thiếu hay lỗi may', true); return; } if (!ta.value.trim()) { toast('Ghi rõ áo nào để mọi người biết', true); return; } m.remove();
+    bulk([ma], 'qc', {qcKetQua:'Lỗi', qcLoai:k, qcGhiChu:ta.value.trim(), qcInLaiLuc:''}, `Đã báo ${QC_LOAI.find(y=>y.k===k).who}`); };
 }
 
 /* ---------- Đơn hoàn thành: CS đã bấm hoàn thành, chia theo tháng ---------- */
@@ -905,6 +920,7 @@ function bind(){
   on('qcq','input', e => { F.qcQ = e.target.value; rerenderKeep('qcq'); });
   const nowTs = () => D.today + ' ' + new Date().toTimeString().slice(0,5);
   main.querySelectorAll('[data-lechok]').forEach(b => b.onclick = () => bulk([b.dataset.lechok], 'in', {lechKiemLuc:nowTs()}, 'Đã báo CS: số BP In đúng, CS sửa lại'));
+  main.querySelectorAll('[data-qcreprint]').forEach(b => b.onclick = () => bulk([b.dataset.qcreprint], 'in', {qcInLaiLuc:nowTs()}, 'Đã báo QC và CS: đã in lại xong'));
   main.querySelectorAll('[data-qcin]').forEach(b => b.onclick = () => bulk([b.dataset.qcin], 'qc', {qcNhanLuc:nowTs()}, 'Đã ghi nhận hàng từ xưởng'));
   main.querySelectorAll('[data-qcok]').forEach(b => b.onclick = () => bulk([b.dataset.qcok], 'qc', {qcKetQua:'Đạt', qcGhiChu:''}, 'QC đạt, đã báo CS phụ trách'));
   main.querySelectorAll('[data-qcbad]').forEach(b => b.onclick = () => askQcBad(b.dataset.qcbad));

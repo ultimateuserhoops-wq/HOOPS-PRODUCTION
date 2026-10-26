@@ -75,7 +75,7 @@ const MOCK = (() => {
   // Máy in mẫu theo người in; vài đơn có vải phối khác vải bo
   orders.forEach(o => { if (o.nguoiIn && o.tienDo !== 'Chờ in') o.mayIn = o.nguoiIn === 'VĂN TÀI' ? 'MÁY CŨ' : 'MÁY MỚI'; });
   [['H2610-246',8,'ELITE'],['H2610-237',4,'2 DA CỨNG'],['H2610-171',6,'Z2']].forEach(([ma,n,v]) => { const o = orders.find(x => x.ma === ma); o.slPhoi = n; o.vaiPhoi = v; });
-  const SEC = {don:['ten','cs','uuTien','ngayFinal','ngayInEp','ngayKhach','ghiChuCS'], in:['tienDo','mayIn','nguoiIn','cuon','slAoIn','slQuanIn','vai','slBo','slPhoi','vaiBo','vaiPhoi','ghiChuIn','ngayDaIn','chuyenEp','lyDoTraVe','lechKiemLuc'], ep:['tienDo','epLe','ngayDaEp','chuyenEp','lyDoTraVe','traVeLuc'], cs:['slAo','slQuan','chiTiet','confirm','loai','ctGhiChu'], may:['xuong','ngayGuiMay','ngayTraMay','ghiChuMay','xuatAnhLuc'], qc:['qcNhanLuc','qcKetQua','qcGhiChu'], xong:['hoanThanhLuc']};
+  const SEC = {don:['ten','cs','uuTien','ngayFinal','ngayInEp','ngayKhach','ghiChuCS'], in:['tienDo','mayIn','nguoiIn','cuon','slAoIn','slQuanIn','vai','slBo','slPhoi','vaiBo','vaiPhoi','ghiChuIn','ngayDaIn','chuyenEp','lyDoTraVe','lechKiemLuc','qcInLaiLuc'], ep:['tienDo','epLe','ngayDaEp','chuyenEp','lyDoTraVe','traVeLuc'], cs:['slAo','slQuan','chiTiet','confirm','loai','ctGhiChu'], may:['xuong','ngayGuiMay','ngayTraMay','ghiChuMay','xuatAnhLuc'], qc:['qcNhanLuc','qcKetQua','qcGhiChu','qcLoai','qcInLaiLuc'], xong:['hoanThanhLuc']};
   const STAMP = {in:'inCapNhat', ep:'epCapNhat', cs:'csCapNhat', may:'mayCapNhat', qc:'qcLuc'};
   const NUMK = ['slAoIn','slQuanIn','slAo','slQuan','slBo','slPhoi'];
   const now = () => '2026-10-20 ' + new Date().toTimeString().slice(0,5);
