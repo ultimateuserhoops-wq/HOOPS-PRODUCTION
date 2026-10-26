@@ -4,7 +4,7 @@ const MOCK = (() => {
   const VAI = ['PREMIUM','PRE NGƯỢC','ELITE','ELITE NGƯỢC','2 DA MỀM','2 DA CỨNG','Z2','MAX AIR','BÓNG CHIẾU','KAMI','DƯƠNG HUY','DH NGƯỢC','VẢI LƯỚI','POLY X','ACTIVE','MK50','PRO'];
   const lists = {'THƯƠNG HIỆU':['HOOPS','AKU'],'CS':['QUYÊN','TRINH','VY','HOÀ'],'MỨC ƯU TIÊN':['MỨC 1 - SIÊU GẤP','MỨC 2 - GẤP','MỨC 3 - BÌNH THƯỜNG'],'TIẾN ĐỘ IN':['Chờ in','Đang in','Đã in','Đã ép'],'NGƯỜI IN':['AN THỨC','VĂN TÀI','HẢO'],'ÉP LẺ/CUỘN':['CUỘN','ÉP LẺ'],'XƯỞNG MAY':['CMT8','HÒA NHƠN'],'NGƯỜI LÊN KẾ HOẠCH MAY':['QUYÊN'],'ĐẨY VỀ CS KHI':['Đã in'],'MÁY IN':['MÁY MỚI','MÁY CŨ'],'LOẠI ÁO':['ÁO BO','ÁO THUN','ÁO BẠ','JACKET','MIDLAYER'],'LOẠI QUẦN':['QUẦN LƯNG THƯỜNG','QUẦN LƯNG XỊN','QUẦN LƯNG RỜI','QUẦN DÀI - ĐEN 2 DA','QUẦN DÀI - NAVY 2 DA','QUẦN REDI'],'CUỘN':['N1','N2','N3','N4','N5','T1','T2','T3','T4','T5','H1','H2','H3','C1','C2','C3','V1'],'LOẠI VẢI':VAI};
   const M1='MỨC 1 - SIÊU GẤP', M2='MỨC 2 - GẤP', M3='MỨC 3 - BÌNH THƯỜNG';
-  const mk = (ma,ten,th,cs,u,f,ie,k,td,ni,extra) => Object.assign({ma,taoLuc:f+' 09:00',nguoiTao:cs,ten,th,cs,uuTien:u,ngayFinal:f,ngayInEp:ie,ngayKhach:k,ghiChuCS:'',tienDo:td,nguoiIn:ni,epLe:'',slAoIn:'',slQuanIn:'',ghiChuIn:'',inCapNhat:ni?'2026-10-20 08:30':'',slAo:'',slQuan:'',chiTiet:'',confirm:false,csCapNhat:'',xuong:'',ngayGuiMay:'',ngayTraMay:'',ghiChuMay:'',mayCapNhat:'',ngayDaIn:'',ngayDaEp:'',cuon:'',sttCuon:'',vai:'',slBo:'',slPhoi:'',vaiBo:'',vaiPhoi:'',mayIn:'',loai:'',ctGhiChu:'',xuatAnhLuc:'',lyDoTraVe:'',traVeLuc:'',chuyenEp:false,chuyenEpLuc:'',epCapNhat:''}, extra||{});
+  const mk = (ma,ten,th,cs,u,f,ie,k,td,ni,extra) => Object.assign({ma,taoLuc:f+' 09:00',nguoiTao:cs,ten,th,cs,uuTien:u,ngayFinal:f,ngayInEp:ie,ngayKhach:k,ghiChuCS:'',tienDo:td,nguoiIn:ni,epLe:'',slAoIn:'',slQuanIn:'',ghiChuIn:'',inCapNhat:ni?'2026-10-20 08:30':'',slAo:'',slQuan:'',chiTiet:'',confirm:false,csCapNhat:'',xuong:'',ngayGuiMay:'',ngayTraMay:'',ghiChuMay:'',mayCapNhat:'',ngayDaIn:'',ngayDaEp:'',cuon:'',sttCuon:'',vai:'',slBo:'',slPhoi:'',vaiBo:'',vaiPhoi:'',mayIn:'',loai:'',ctGhiChu:'',xuatAnhLuc:'',lyDoTraVe:'',traVeLuc:'',qcNhanLuc:'',qcKetQua:'',qcGhiChu:'',qcLuc:'',hoanThanhLuc:'',chuyenEp:false,chuyenEpLuc:'',epCapNhat:''}, extra||{});
   const DONE = (day, ni, cuon, stt, ao, quan, vai, bo, extra) => Object.assign({ngayDaIn:day, nguoiIn:ni, cuon, sttCuon:stt, slAoIn:ao, slQuanIn:quan, vai, slBo:bo||'', vaiBo:bo?'2 DA MỀM':''}, extra||{});
   const EP = (day, le) => ({chuyenEp:true, ngayDaEp:day, epLe:le||'CUỘN'});
   const orders = [
@@ -63,13 +63,18 @@ const MOCK = (() => {
   orders.forEach(o => { const l = LO[o.ma]; if (l) { o.loai = JSON.stringify(l); o.chiTiet = loTxt(l); } });
   // Nhóm gửi xưởng trước hôm nay coi như đã xuất ảnh (hoàn thành); nhóm 20/10 còn chờ gửi
   orders.forEach(o => { if (o.xuong && o.ngayGuiMay && o.ngayGuiMay < '2026-10-20') o.xuatAnhLuc = o.ngayGuiMay + ' 17:00'; });
+  // Đơn gửi xưởng trước 16/10: QC đạt và CS đã bấm hoàn thành. Đơn gửi 17–19/10: đang ở QC
+  orders.forEach(o => { if (!o.xuatAnhLuc) return; const t = o.ngayTraMay || o.ngayKhach;
+    if (o.ngayGuiMay < '2026-10-16') Object.assign(o, {qcNhanLuc:t+' 09:00', qcKetQua:'Đạt', qcLuc:t+' 15:00', hoanThanhLuc:t+' 16:30'}); });
+  Object.assign(orders.find(o => o.ma === 'H2610-161'), {qcNhanLuc:'2026-10-20 08:30'});
+  Object.assign(orders.find(o => o.ma === 'H2610-170'), {qcNhanLuc:'2026-10-19 09:00', qcKetQua:'Đạt', qcLuc:'2026-10-20 10:00'});
   // 1 đơn BP Ép vừa trả về BP In
   Object.assign(orders.find(o => o.ma === 'H2610-253'), {lyDoTraVe:'3 áo số 12 bị lem màu, in lại', traVeLuc:'2026-10-20 10:15'});
   // Máy in mẫu theo người in; vài đơn có vải phối khác vải bo
   orders.forEach(o => { if (o.nguoiIn && o.tienDo !== 'Chờ in') o.mayIn = o.nguoiIn === 'VĂN TÀI' ? 'MÁY CŨ' : 'MÁY MỚI'; });
   [['H2610-246',8,'ELITE'],['H2610-237',4,'2 DA CỨNG'],['H2610-171',6,'Z2']].forEach(([ma,n,v]) => { const o = orders.find(x => x.ma === ma); o.slPhoi = n; o.vaiPhoi = v; });
-  const SEC = {don:['ten','cs','uuTien','ngayFinal','ngayInEp','ngayKhach','ghiChuCS'], in:['tienDo','mayIn','nguoiIn','cuon','slAoIn','slQuanIn','vai','slBo','slPhoi','vaiBo','vaiPhoi','ghiChuIn','ngayDaIn','chuyenEp','lyDoTraVe'], ep:['tienDo','epLe','ngayDaEp','chuyenEp','lyDoTraVe','traVeLuc'], cs:['slAo','slQuan','chiTiet','confirm','loai','ctGhiChu'], may:['xuong','ngayGuiMay','ngayTraMay','ghiChuMay','xuatAnhLuc']};
-  const STAMP = {in:'inCapNhat', ep:'epCapNhat', cs:'csCapNhat', may:'mayCapNhat'};
+  const SEC = {don:['ten','cs','uuTien','ngayFinal','ngayInEp','ngayKhach','ghiChuCS'], in:['tienDo','mayIn','nguoiIn','cuon','slAoIn','slQuanIn','vai','slBo','slPhoi','vaiBo','vaiPhoi','ghiChuIn','ngayDaIn','chuyenEp','lyDoTraVe'], ep:['tienDo','epLe','ngayDaEp','chuyenEp','lyDoTraVe','traVeLuc'], cs:['slAo','slQuan','chiTiet','confirm','loai','ctGhiChu'], may:['xuong','ngayGuiMay','ngayTraMay','ghiChuMay','xuatAnhLuc'], qc:['qcNhanLuc','qcKetQua','qcGhiChu'], xong:['hoanThanhLuc']};
+  const STAMP = {in:'inCapNhat', ep:'epCapNhat', cs:'csCapNhat', may:'mayCapNhat', qc:'qcLuc'};
   const NUMK = ['slAoIn','slQuanIn','slAo','slQuan','slBo','slPhoi'];
   const now = () => '2026-10-20 ' + new Date().toTimeString().slice(0,5);
   const clean = s => String(s ?? '').replace(/[​\r\n\t]+/g,' ').replace(/\s{2,}/g,' ').trim();
@@ -90,10 +95,10 @@ const MOCK = (() => {
     {id:'TK3',ngay:'2026-10-19',tk:'LINH',ma:'A2610-092',ten:'Huy Tran',th:'AKU',rapAo:1,rapQuan:0,ghiChu:''},
     {id:'TK4',ngay:'2026-10-20',tk:'LINH',ma:'H2610-249',ten:'USH - Thịnh Thái',th:'HOOPS',rapAo:3,rapQuan:2,ghiChu:'sửa rập lần 2'},
   ];
-  const ACC = {'tk@vidu.vn':{name:'NAM',roles:['TK']},'trinh@vidu.vn':{name:'TRINH',roles:['CS']},'quyen@vidu.vn':{name:'QUYÊN',roles:['CS','KẾ HOẠCH MAY']},'bpin@vidu.vn':{name:'VĂN TÀI',roles:['BP IN']},'ep@vidu.vn':{name:'BP ÉP',roles:['BP ÉP']},'quanly@vidu.vn':{name:'MINH',roles:['QUẢN LÝ']}};
+  const ACC = {'tk@vidu.vn':{name:'NAM',roles:['TK']},'trinh@vidu.vn':{name:'TRINH',roles:['CS']},'quyen@vidu.vn':{name:'QUYÊN',roles:['CS','KẾ HOẠCH MAY']},'bpin@vidu.vn':{name:'VĂN TÀI',roles:['BP IN']},'ep@vidu.vn':{name:'BP ÉP',roles:['BP ÉP']},'qc@vidu.vn':{name:'QC',roles:['QC']},'quanly@vidu.vn':{name:'MINH',roles:['QUẢN LÝ']}};
   const SESS = {};
   const auth = (t, need) => { const a = SESS[t]; if (!a) throw new Error('AUTH:Bạn cần đăng nhập'); if (need && a.roles.indexOf('QUẢN LÝ')<0 && !need.some(r=>a.roles.indexOf(r)>=0)) throw new Error('Tài khoản của bạn không có quyền làm thao tác này'); return a; };
-  const NEED = {don:['CS'], in:['BP IN'], ep:['BP ÉP','BP IN'], cs:['CS'], may:['KẾ HOẠCH MAY']};
+  const NEED = {don:['CS'], in:['BP IN'], ep:['BP ÉP','BP IN'], cs:['CS'], may:['KẾ HOẠCH MAY'], qc:['QC'], xong:['CS']};
   const nextStt = o => 1 + Math.max(0, ...orders.filter(x => x !== o && x.ngayDaIn === o.ngayDaIn && x.nguoiIn === o.nguoiIn && x.cuon === o.cuon && x.sttCuon !== '').map(x => +x.sttCuon));
   const updateOrder = (t, ma, sec, patch) => {
     auth(t, NEED[sec]);

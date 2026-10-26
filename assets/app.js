@@ -32,6 +32,7 @@ const VIEWS = [
   {id:'bpep', name:'BP Ép', role:['BP ÉP','BP IN'], step:3},
   {id:'cuatoi', name:'CS xác nhận SL', role:'CS', step:4},
   {id:'may', name:'Kế hoạch may', role:'KẾ HOẠCH MAY', step:5},
+  {id:'qc', name:'QC', role:'QC', step:6},
   {id:'xong', name:'Đơn hoàn thành', role:''},
   {id:'tiendo', name:'Tiến độ', role:''},
   {id:'slin', name:'Sản lượng In', role:'BP IN'},
@@ -126,7 +127,7 @@ function setMe(me){
 function showLogin(msg, typedEmail){
   D = null; ME = ''; ROLES = [];
   $('#whoBox').hidden = true; $('#nav').innerHTML = ''; $('#syncTxt').textContent = 'Chưa đăng nhập';
-  const demo = IS_LIVE ? '' : '<div class="demo"><b>Bản chạy thử.</b> Đăng nhập bằng 1 trong các tài khoản mẫu, mật khẩu đều là <b>123456</b>:<br>tk@vidu.vn (Thiết kế) · trinh@vidu.vn (CS) · quyen@vidu.vn (CS + Kế hoạch may) · bpin@vidu.vn (BP In) · ep@vidu.vn (BP Ép) · quanly@vidu.vn (Quản lý)</div>';
+  const demo = IS_LIVE ? '' : '<div class="demo"><b>Bản chạy thử.</b> Đăng nhập bằng 1 trong các tài khoản mẫu, mật khẩu đều là <b>123456</b>:<br>tk@vidu.vn (Thiết kế) · trinh@vidu.vn (CS) · quyen@vidu.vn (CS + Kế hoạch may) · bpin@vidu.vn (BP In) · ep@vidu.vn (BP Ép) · qc@vidu.vn (QC) · quanly@vidu.vn (Quản lý)</div>';
   $('#main').innerHTML = demo + `<form class="login" id="fLogin" autocomplete="on">
     <div><h2>Đăng nhập</h2><p class="lede">Dùng email và mật khẩu quản lý đã cấp cho bạn.</p></div>
     ${msg ? `<div class="err">${esc(msg)}</div>` : ''}
@@ -166,7 +167,7 @@ function render(){
   const noRole = ROLES.length ? '' : '<div class="demo"><b>Tài khoản này chưa có vai trò hợp lệ</b>, nên chỉ xem được Tiến độ. Quản lý ghi ở cột VAI TRÒ (tab TAI_KHOAN) một hoặc nhiều vai trò: CS, BP IN, BP ÉP, KẾ HOẠCH MAY, TK, QUẢN LÝ, cách nhau bằng dấu phẩy. Sau đó bấm Đăng xuất rồi đăng nhập lại.</div>';
   const demo = (IS_LIVE ? '' : '<div class="demo"><b>Bản chạy thử.</b> Dữ liệu là đơn mẫu, chỉ lưu tạm trong trang này và mất khi tải lại. Bản thật ghi thẳng vào Google Sheet.</div>') + noRole;
   renderBell();
-  const v = {xong:vXong, quytrinh:vQuyTrinh, nhap:vNhap, tiendo:vTienDo, bpin:vBpIn, cuatoi:vCuaToi, may:vMay, bpep:vBpEp, slin:vSlIn, tk:vTk}[VIEW]();
+  const v = {qc:vQc, xong:vXong, quytrinh:vQuyTrinh, nhap:vNhap, tiendo:vTienDo, bpin:vBpIn, cuatoi:vCuaToi, may:vMay, bpep:vBpEp, slin:vSlIn, tk:vTk}[VIEW]();
   const keepScroll = window.scrollY;
   $('#main').innerHTML = demo + v;
   window.scrollTo(0, keepScroll);
@@ -184,6 +185,9 @@ function notifs(){
     out.push({id:'ep|'+o.ma, at:o.ngayDaEp, ma:o.ma, go:o.confirm?'':'cuatoi', t:`Đơn ${o.ma} đã ép xong (${dm(o.ngayDaEp)})`, d:o.ten + (o.confirm ? '' : ' · chưa nhập loại áo quần')}));
   if (has('CS')) D.orders.filter(o => mineCs(o) && o.tienDo === 'Đã in' && recent(o.ngayDaIn) && !o.confirm).forEach(o =>
     out.push({id:'in|'+o.ma, at:o.ngayDaIn, ma:o.ma, go:'cuatoi', t:`Đơn ${o.ma} đã in xong, cần nhập số lượng`, d:o.ten}));
+  if (has('CS')) D.orders.filter(o => mineCs(o) && o.qcKetQua && !o.hoanThanhLuc).forEach(o =>
+    out.push({id:'qc|'+o.ma+'|'+o.qcKetQua, at:o.qcLuc||D.today, hot:o.qcKetQua==='Lỗi', ma:o.ma, go:'cuatoi', t:o.qcKetQua==='Đạt' ? `QC đạt ${o.ma}, bấm Đơn đã hoàn thành` : `QC báo lỗi ${o.ma}`, d:o.qcKetQua==='Đạt' ? o.ten : o.qcGhiChu}));
+  if (has('QC')) { const n = D.orders.filter(o => o.xuatAnhLuc && !o.qcNhanLuc && diff(o.ngayTraMay, D.today) !== null && diff(o.ngayTraMay, D.today) <= 0).length; if (n) out.push({id:'qcn|'+D.today+'|'+n, at:D.today, go:'qc', t:`${n} đơn đến ngày cần nhận hàng từ xưởng`, d:''}); }
   if (has('KẾ HOẠCH MAY')) { const n = D.orders.filter(o => o.tienDo === 'Đã ép' && !o.xuong).length; if (n) out.push({id:'may|'+D.today+'|'+n, at:D.today, go:'may', t:`${n} đơn đã ép chờ xếp xưởng`, d:''}); }
   return out.sort((a,b) => (b.hot?1:0)-(a.hot?1:0) || String(b.at).localeCompare(String(a.at)));
 }
@@ -209,6 +213,7 @@ const STAGES = [
   {id:'choep',name:'Chờ ép',               who:'BP Ép',        view:'bpep',  test:o => o.tienDo === 'Đã in' && o.chuyenEp},
   {id:'daep', name:'Đã ép · chờ xếp xưởng', who:'Kế hoạch may', view:'may',   test:o => o.tienDo === 'Đã ép' && !o.xuong},
   {id:'xuong',name:'Đã xếp xưởng · chờ gửi', who:'Kế hoạch may', view:'may',   test:o => !!o.xuong && !o.xuatAnhLuc},
+  {id:'qc',   name:'Ở xưởng / QC',          who:'QC → CS hoàn thành', view:'qc', test:o => !!o.xuatAnhLuc && !o.hoanThanhLuc},
 ];
 const stageOf = o => isDone(o) ? {id:'xong', name:'Hoàn thành', who:'Đơn hoàn thành', view:'xong'} : (STAGES.find(s => s.test(o)) || STAGES[0]);
 const lateOf = o => o.xuong ? false : o.tienDo === 'Đã ép' ? diff(o.ngayKhach, D.today) < 0 : diff(o.ngayInEp, D.today) < 0;
@@ -230,11 +235,13 @@ function vQuyTrinh(){
   if (has('BP IN')) { const a = D.orders.filter(o => STAGES[0].test(o) || STAGES[1].test(o)).length, b = D.orders.filter(STAGES[2].test).length; todo.push({v:'bpin', t:`${a} đơn cần in · ${b} đơn đã in chờ confirm chuyển ép`, n:a+b}); }
   if (has('BP ÉP')) { const a = D.orders.filter(STAGES[3].test).length; todo.push({v:'bpep', t:`${a} đơn chờ ép`, n:a}); }
   if (has('KẾ HOẠCH MAY')) { const a = D.orders.filter(STAGES[4].test).length; todo.push({v:'may', t:`${a} đơn đã ép chờ xếp xưởng`, n:a}); }
+  if (has('QC')) { const a = D.orders.filter(o => o.qcNhanLuc && !o.qcKetQua).length, b = D.orders.filter(o => o.xuatAnhLuc && !o.qcNhanLuc).length; todo.push({v:'qc', t:`${a} đơn chờ kiểm · ${b} đơn chờ xưởng trả`, n:a}); }
+  if (has('CS')) { const m = D.orders.filter(o => o.qcKetQua === 'Đạt' && !o.hoanThanhLuc && (has('QUẢN LÝ') || o.cs === ME)).length; if (m) todo.push({v:'cuatoi', t:`${m} đơn QC đạt, chờ bấm Đơn đã hoàn thành`, n:m}); }
   if (has('TK')) todo.push({v:'tk', t:'Nhập số rập áo, rập quần đã ra', n:-1});
   return `
-  <div class="vhead"><h2>Quy trình đơn hàng</h2><p class="lede">Mỗi đơn đi qua 6 chặng, từ lúc CS nhập đến lúc gửi xưởng may. Bấm tên chặng để mở màn hình làm việc, bấm mã đơn để xem toàn bộ lịch sử của đơn đó.</p></div>
+  <div class="vhead"><h2>Quy trình đơn hàng</h2><p class="lede">Mỗi đơn đi qua 7 chặng, từ lúc CS nhập đến lúc QC kiểm xong và CS bấm hoàn thành. Bấm tên chặng để mở màn hình làm việc, bấm mã đơn để xem toàn bộ lịch sử của đơn đó.</p></div>
   ${todo.length ? `<div class="sec"><h3>Việc của bạn</h3><div class="todo">${todo.map(x=>`<button type="button" class="todo-i" data-go="${x.v}"><span class="stepno">${(VIEWS.find(v=>v.id===x.v)||{}).step||'TK'}</span><span>${esc(x.t)}</span>${x.n>0?`<span class="badge hot">${x.n}</span>`:''}<span class="arr" aria-hidden="true">→</span></button>`).join('')}</div></div>` : ''}
-  <div class="flow-steps" aria-hidden="true"><span style="grid-column:span 3">Bước 2 · BP In</span><span>Bước 3 · BP Ép</span><span style="grid-column:span 2">Bước 5 · Kế hoạch may</span></div>
+  <div class="flow-steps" aria-hidden="true"><span style="grid-column:span 3">Bước 2 · BP In</span><span>Bước 3 · BP Ép</span><span style="grid-column:span 2">Bước 5 · Kế hoạch may</span><span>Bước 6 · QC</span></div>
   <div class="pipe">${STAGES.map(col).join('')}</div>
   <div class="cmp">Song song với chặng 3–5: <b>${csTodo.length}</b> đơn đã in nhưng CS chưa CONFIRM số lượng${csTodo.length?` (${D.lists['CS'].map(c=>{const n=csTodo.filter(o=>o.cs===c).length;return n?esc(c)+' '+n:''}).filter(Boolean).join(' · ')})`:''}. Kế hoạch may tạm dùng số BP In cho các đơn này.</div>`;
 }
@@ -252,6 +259,8 @@ function openOrder(ma){
     st(o.tienDo === 'Đã ép', '3 · BP Ép', dd(o.ngayDaEp), o.tienDo === 'Đã ép' ? esc(o.epLe||'') : ''),
     st(!!o.confirm, '4 · CS xác nhận số lượng', dd(o.csCapNhat), o.confirm ? `${nz(o.slAo)} áo · ${nz(o.slQuan)} quần${o.chiTiet?' · '+esc(o.chiTiet):''}` : (reached(o) ? 'Chờ CS nhập' : '')),
     st(!!o.xuong, '5 · Kế hoạch may', dd(o.ngayGuiMay), o.xuong ? `Xưởng ${esc(o.xuong)}${o.ngayTraMay?' · trả '+dmy(o.ngayTraMay):''}${o.ghiChuMay?' · '+esc(o.ghiChuMay):''}${o.xuatAnhLuc?' · đã xuất ảnh gửi xưởng '+esc(dd(o.xuatAnhLuc)):' · chưa gửi xưởng'}` : ''),
+    st(o.qcKetQua === 'Đạt', '6 · QC', dd(o.qcLuc||o.qcNhanLuc), o.qcNhanLuc ? `Nhận hàng ${esc(dd(o.qcNhanLuc))}${o.qcKetQua?' · '+esc(o.qcKetQua):' · đang kiểm'}${o.qcGhiChu?' · '+esc(o.qcGhiChu):''}` : (o.xuatAnhLuc ? 'Chờ xưởng trả hàng' : '')),
+    st(!!o.hoanThanhLuc, '7 · CS bấm hoàn thành', dd(o.hoanThanhLuc), ''),
   ];
   const d = $('#drawer');
   d.innerHTML = `<div class="drawer-bg" data-close></div><aside class="drawer-in" role="dialog" aria-label="Chi tiết đơn ${esc(o.ma)}">
@@ -461,6 +470,7 @@ function vCuaToi(){
   const justEp = mine.filter(o => o.tienDo === 'Đã ép' && o.ngayDaEp && diff(D.today, o.ngayDaEp) <= 2 && !o.xuatAnhLuc).sort((a,b)=>b.ngayDaEp.localeCompare(a.ngayDaEp));
   const todo = mine.filter(o => reached(o) && !o.confirm).sort((a,b)=>(a.ngayKhach||'9').localeCompare(b.ngayKhach||'9'));
   const done = mine.filter(o => reached(o) && o.confirm && !o.xuong);
+  const toFinish = mine.filter(o => o.xuatAnhLuc && !o.hoanThanhLuc).sort((a,b)=>(a.qcKetQua==='Đạt'?0:1)-(b.qcKetQua==='Đạt'?0:1) || (a.ngayKhach||'9').localeCompare(b.ngayKhach||'9'));
   const waiting = mine.filter(o => !reached(o)).sort((a,b)=>(a.ngayInEp||'9').localeCompare(b.ngayInEp||'9'));
   const card = o => {
     const v = k => val(o,'cs',k);
@@ -482,13 +492,49 @@ function vCuaToi(){
   ${has('QUẢN LÝ') || L['CS'].indexOf(ME) < 0 ? `<div class="bar"><span class="lb" style="font-weight:700">CS:</span><div class="seg" role="group" aria-label="Chọn CS">${L['CS'].map(c=>`<button type="button" aria-pressed="${c===cs}" data-mycs="${esc(c)}">${esc(c)}</button>`).join('')}</div></div>` : ''}
   <div class="sec"><h3>Cần nhập số lượng <span class="badge${todo.length?' hot':''}">${todo.length}</span></h3>${todo.length?`<div class="cards">${todo.map(card).join('')}</div>`:'<div class="empty">Chưa có đơn nào in xong đang chờ bạn nhập số lượng.</div>'}</div>
   <div class="sec"><h3>Đã CONFIRM, chờ xếp xưởng <span class="badge">${done.length}</span></h3>${done.length?`<div class="cards">${done.map(card).join('')}</div>`:'<div class="empty">Không có.</div>'}</div>
+  <div class="sec"><h3>Đã gửi xưởng · bấm hoàn thành khi QC đạt <span class="badge${toFinish.some(o=>o.qcKetQua==='Đạt')?' hot':''}">${toFinish.length}</span></h3>
+  ${toFinish.length ? `<div class="tbox"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>Xưởng</th><th>Áo</th><th>Quần</th><th>Khách nhận</th><th>QC</th><th></th></tr></thead><tbody>
+  ${toFinish.map(o=>`<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.qcKetQua==='Lỗi'?`<div class="warn">QC báo lỗi: ${esc(o.qcGhiChu)}</div>`:''}</td><td>${esc(o.xuong)}</td><td class="num">${mAo(o)}</td><td class="num">${mQuan(o)}</td><td class="num">${dm(o.ngayKhach)}</td><td>${qcChip(o)}</td><td>${o.qcKetQua==='Đạt'?`<button class="btn sm" type="button" data-finish="${esc(o.ma)}">Đơn đã hoàn thành</button>`:'<span class="hint">chờ QC</span>'}</td></tr>`).join('')}
+  </tbody></table></div>` : '<div class="empty">Không có đơn nào đang ở xưởng.</div>'}</div>
   <details class="sec"><summary>Đơn đang ở BP In (${waiting.length})</summary>
   ${waiting.length?`<div class="tbox" style="margin-top:8px"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>Tiến độ</th><th>Xong in ép</th><th>Còn lại</th></tr></thead><tbody>${waiting.map(o=>`<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td>${oChip(o)}</td><td class="num">${dm(o.ngayInEp)}</td><td>${remTag(o)}</td></tr>`).join('')}</tbody></table></div>`:''}
   </details>`;
 }
 
-/* ---------- Đơn hoàn thành: đã gửi xưởng may, chia theo tháng ---------- */
-const doneAt = o => o.ngayGuiMay || (o.mayCapNhat || '').slice(0,10);
+/* ---------- 6. QC: nhận hàng từ xưởng, kiểm tra, báo Đạt / Lỗi ---------- */
+const qcChip = o => o.qcKetQua === 'Đạt' ? '<span class="chip t-ep">QC đạt</span>' : o.qcKetQua === 'Lỗi' ? '<span class="chip r-red">QC lỗi</span>' : o.qcNhanLuc ? '<span class="chip t-dang">Đã nhận, đang kiểm</span>' : '<span class="chip t-cho">Chờ xưởng trả</span>';
+function vQc(){
+  const L = D.lists;
+  let list = D.orders.filter(o => o.xuatAnhLuc && !o.hoanThanhLuc);
+  if (F.qcQ) { const q = F.qcQ.toUpperCase(); list = list.filter(o => (o.ma+' '+o.ten).toUpperCase().indexOf(q) >= 0); }
+  const byNeed = (a,b) => (a.ngayTraMay||a.ngayKhach||'9').localeCompare(b.ngayTraMay||b.ngayKhach||'9');
+  const waitX = list.filter(o => !o.qcNhanLuc).sort(byNeed), checking = list.filter(o => o.qcNhanLuc && !o.qcKetQua).sort(byNeed), bad = list.filter(o => o.qcKetQua === 'Lỗi').sort(byNeed), ok = list.filter(o => o.qcKetQua === 'Đạt').sort(byNeed);
+  const lr = o => [loaiOf(o,'ao'), loaiOf(o,'quan')].filter(Boolean).join(' · ');
+  const tbl = (rows, act) => rows.length ? `<div class="tbox"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>CS</th><th>Áo</th><th>Quần</th><th>Loại áo quần</th><th>Gửi</th><th>Cần nhận</th><th>Khách nhận</th><th></th></tr></thead><tbody>
+    ${rows.map(o=>{ const n = diff(o.ngayTraMay, D.today); return `<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.qcGhiChu?`<div class="${o.qcKetQua==='Lỗi'?'warn':'hint'}">${esc(o.qcGhiChu)}</div>`:''}</td><td>${esc(o.cs)}</td><td class="num"><b>${mAo(o)}</b></td><td class="num"><b>${mQuan(o)}</b></td><td class="wrap">${esc(lr(o)||'—')}</td><td class="num">${dm(o.ngayGuiMay)}</td><td class="num${!o.qcNhanLuc&&n!==null&&n<0?' stuck':''}">${dm(o.ngayTraMay)}</td><td class="num">${dm(o.ngayKhach)}</td><td><div class="actions" style="flex-wrap:nowrap">${act(o)}</div></td></tr>`; }).join('')}
+    </tbody></table></div>` : '<div class="empty">Không có.</div>';
+  const xs = x => L['XƯỞNG MAY'].map(w => { const r = x.filter(o => o.xuong === w); return r.length ? `<div class="sub-h">Xưởng ${esc(w)} · ${r.length} đơn</div>` + tbl(r, o => `<button class="btn sm" type="button" data-qcin="${esc(o.ma)}">Đã nhận hàng</button>`) : ''; }).join('') || '<div class="empty">Không có.</div>';
+  return `
+  <div class="vhead"><h2>QC</h2><p class="lede">Đơn Kế hoạch may đã gửi xưởng hiện ở đây. Khi xưởng trả hàng bấm <b>Đã nhận hàng</b>, kiểm xong bấm <b>Đạt</b> hoặc <b>Lỗi</b> (ghi lỗi gì). Đơn đạt sẽ báo cho CS phụ trách để CS bấm <b>Đơn đã hoàn thành</b>.</p></div>
+  <div class="bar"><div class="grow"><input type="search" id="qcq" placeholder="Tìm mã hoặc tên đơn" value="${esc(F.qcQ||'')}" aria-label="Tìm đơn"></div></div>
+  <div class="sec"><h3>Đã nhận, chờ kiểm <span class="badge${checking.length?' hot':''}">${checking.length}</span></h3>${tbl(checking, o => `<button class="btn sm" type="button" data-qcok="${esc(o.ma)}">Đạt</button><button class="btn ghost sm" type="button" data-qcbad="${esc(o.ma)}">Lỗi</button>`)}</div>
+  ${bad.length ? `<div class="sec"><h3>Lỗi, chờ xưởng sửa <span class="badge hot">${bad.length}</span></h3>${tbl(bad, o => `<button class="btn sm" type="button" data-qcok="${esc(o.ma)}">Kiểm lại: Đạt</button>`)}</div>` : ''}
+  <div class="sec"><h3>Chờ xưởng trả hàng <span class="badge">${waitX.length}</span></h3>${xs(waitX)}</div>
+  ${ok.length ? `<details class="sec"><summary>Đã đạt, chờ CS bấm hoàn thành (${ok.length})</summary><div style="margin-top:8px">${tbl(ok, o => `<button class="btn ghost sm" type="button" data-qcundo="${esc(o.ma)}">Hoàn tác</button>`)}</div></details>` : ''}`;
+}
+function askQcBad(ma){
+  const o = byKey(ma); if (!o) return;
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<form class="modal-in" role="dialog" aria-label="Báo lỗi QC"><b>QC lỗi · ${esc(o.ma)}</b><span class="hint">${esc(o.ten)} · xưởng ${esc(o.xuong)}</span>
+    <div class="f"><label for="qcWhy">Lỗi gì (CS và Kế hoạch may sẽ thấy)</label><textarea id="qcWhy" rows="2" placeholder="Ví dụ: 2 áo may lệch cổ, trả xưởng sửa"></textarea></div>
+    <div class="actions"><button class="btn" type="submit">Báo lỗi</button><button class="btn ghost" type="button" data-cl>Hủy</button></div></form>`;
+  document.body.appendChild(m); const ta = m.querySelector('#qcWhy'); ta.focus();
+  m.querySelector('[data-cl]').onclick = () => m.remove();
+  m.querySelector('form').onsubmit = ev => { ev.preventDefault(); if (!ta.value.trim()) { toast('Ghi lỗi để CS biết', true); return; } m.remove(); bulk([ma], 'qc', {qcKetQua:'Lỗi', qcGhiChu:ta.value.trim()}, 'Đã báo lỗi QC'); };
+}
+
+/* ---------- Đơn hoàn thành: CS đã bấm hoàn thành, chia theo tháng ---------- */
+const doneAt = o => (o.hoanThanhLuc || '').slice(0,10);
 function vXong(){
   const L = D.lists;
   let list = D.orders.filter(o => isDone(o) && doneAt(o));
@@ -498,20 +544,20 @@ function vXong(){
   list.sort((a,b) => doneAt(b).localeCompare(doneAt(a)) || b.ma.localeCompare(a.ma));
   const months = Array.from(new Set(list.map(o => doneAt(o).slice(0,7))));
   const curM = D.today.slice(0,7);
-  const onTime = o => !o.ngayKhach || !o.ngayTraMay || o.ngayTraMay <= o.ngayKhach;
+  const onTime = o => !o.ngayKhach || !o.qcNhanLuc || o.qcNhanLuc.slice(0,10) <= o.ngayKhach;
   const mLabel = m => 'Tháng ' + m.slice(5,7) + '/' + m.slice(0,4);
   const block = m => {
     const g = list.filter(o => doneAt(o).slice(0,7) === m);
     const ao = g.reduce((s,o)=>s+mAo(o),0), qu = g.reduce((s,o)=>s+mQuan(o),0), late = g.filter(o=>!onTime(o)).length;
     const open = m in F.htOpen ? F.htOpen[m] : (m === curM || m === months[0]);
     return `<details class="grp month" data-month="${m}"${open?' open':''}>
-      <summary class="grp-h"><div><b>${mLabel(m)}</b> · ${g.length} đơn · ${ao.toLocaleString('vi-VN')} áo · ${qu.toLocaleString('vi-VN')} quần${late?` · <span class="stuck">${late} đơn xưởng trả sau ngày khách nhận</span>`:''}</div></summary>
-      <div class="tbox" style="border:0;border-radius:0"><table><thead><tr><th>Hoàn thành</th><th>Mã</th><th>Tên đơn</th><th>CS</th><th>Áo</th><th>Loại áo</th><th>Quần</th><th>Loại quần</th><th>Xưởng</th><th>In</th><th>Ép</th><th>Khách nhận</th><th>Xưởng trả</th></tr></thead><tbody>
-      ${g.map(o=>`<tr><td class="num"><b>${dm(doneAt(o))}</b></td><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td>${esc(o.cs)}</td><td class="num">${mAo(o)}</td><td class="wrap">${esc(loaiOf(o,'ao')||'—')}</td><td class="num">${mQuan(o)}</td><td class="wrap">${esc(loaiOf(o,'quan')||'—')}</td><td>${esc(o.xuong)}</td><td class="num">${dm(o.ngayDaIn)}</td><td class="num">${dm(o.ngayDaEp)}</td><td class="num">${dm(o.ngayKhach)}</td><td class="num${onTime(o)?'':' stuck'}">${dm(o.ngayTraMay)}</td></tr>`).join('')}
+      <summary class="grp-h"><div><b>${mLabel(m)}</b> · ${g.length} đơn · ${ao.toLocaleString('vi-VN')} áo · ${qu.toLocaleString('vi-VN')} quần${late?` · <span class="stuck">${late} đơn nhận hàng từ xưởng sau ngày khách nhận</span>`:''}</div></summary>
+      <div class="tbox" style="border:0;border-radius:0"><table><thead><tr><th>Hoàn thành</th><th>Mã</th><th>Tên đơn</th><th>CS</th><th>Áo</th><th>Loại áo</th><th>Quần</th><th>Loại quần</th><th>Xưởng</th><th>In</th><th>Ép</th><th>Gửi xưởng</th><th>QC nhận</th><th>Khách nhận</th></tr></thead><tbody>
+      ${g.map(o=>`<tr><td class="num"><b>${dm(doneAt(o))}</b></td><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td>${esc(o.cs)}</td><td class="num">${mAo(o)}</td><td class="wrap">${esc(loaiOf(o,'ao')||'—')}</td><td class="num">${mQuan(o)}</td><td class="wrap">${esc(loaiOf(o,'quan')||'—')}</td><td>${esc(o.xuong)}</td><td class="num">${dm(o.ngayDaIn)}</td><td class="num">${dm(o.ngayDaEp)}</td><td class="num">${dm(o.ngayGuiMay)}</td><td class="num${onTime(o)?'':' stuck'}">${dm(o.qcNhanLuc)}</td><td class="num">${dm(o.ngayKhach)}</td></tr>`).join('')}
       </tbody></table></div></details>`;
   };
   return `
-  <div class="vhead"><h2>Đơn hoàn thành</h2><p class="lede">Đơn đã <b>xuất ảnh gửi xưởng</b> được tính là hoàn thành, theo <b>ngày gửi may</b>. Đơn hoàn thành không còn hiện ở các màn hình làm việc. Mới nhất ở trên, chia theo tháng. Bấm tên tháng để mở hoặc thu gọn, bấm mã đơn để xem lịch sử.</p></div>
+  <div class="vhead"><h2>Đơn hoàn thành</h2><p class="lede">Đơn được lưu ở đây khi <b>CS bấm Đơn đã hoàn thành</b> (sau khi QC đạt), xếp theo ngày CS bấm. Dữ liệu này dùng cho báo cáo; đơn hoàn thành không còn hiện ở các màn hình làm việc. Mới nhất ở trên, chia theo tháng. Bấm tên tháng để mở hoặc thu gọn, bấm mã đơn để xem lịch sử.</p></div>
   <div class="bar"><div class="grow"><input type="search" id="htq" placeholder="Tìm mã hoặc tên đơn" value="${esc(F.htQ)}" aria-label="Tìm đơn"></div>
     <select id="htcs" aria-label="CS">${opts(L['CS'], F.htCs, 'Mọi CS')}</select>
     <select id="htx" aria-label="Xưởng">${opts(L['XƯỞNG MAY'], F.htX, 'Mọi xưởng')}</select></div>
@@ -524,8 +570,8 @@ const cap1 = t => t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : '';
 // 1 loại: chỉ tên loại ("Áo bạ"); nhiều loại: mỗi dòng "20 Áo bo"
 const loaiLines = (o, kind) => { const r = parseLoai(o.loai)[kind].filter(x => x[0] && +x[1] > 0); return r.length === 1 ? [cap1(r[0][0])] : r.map(x => x[1] + ' ' + cap1(x[0])); };
 const loaiOf = (o, kind) => parseLoai(o.loai)[kind].filter(r => r[0] && +r[1] > 0).map(r => r[1] + ' ' + r[0].toLowerCase()).join(' + ');
-// Đơn đã xuất ảnh gửi xưởng = hoàn thành, không hiện ở Kế hoạch may nữa
-const isDone = o => !!(o.xuong && o.xuatAnhLuc);
+// Đơn đã xuất ảnh gửi xưởng chuyển sang QC, không hiện ở Kế hoạch may nữa
+const isDone = o => !!o.hoanThanhLuc; // CS bấm Đơn đã hoàn thành sau khi QC đạt
 function vMay(){
   const L = D.lists;
   let wait = D.orders.filter(o => o.tienDo === 'Đã ép' && !o.xuong);
@@ -560,11 +606,11 @@ function vMay(){
     </section>`;
   };
   return `
-  <div class="vhead"><h2>Kế hoạch may</h2><p class="lede">Đơn đã ép, xếp theo <b>ngày khách nhận</b> gần nhất trước. Chọn xưởng và ngày cần nhận hàng rồi Lưu; ngày gửi tự lấy là hôm nay. Đơn đã xếp nằm ở bảng của từng xưởng. Bấm <b>Xuất ảnh PNG gửi xưởng</b> để lấy ảnh gửi qua Zalo; xuất xong danh sách đó được ẩn và chuyển sang Đơn hoàn thành.</p></div>
+  <div class="vhead"><h2>Kế hoạch may</h2><p class="lede">Đơn đã ép, xếp theo <b>ngày khách nhận</b> gần nhất trước. Chọn xưởng và ngày cần nhận hàng rồi Lưu; ngày gửi tự lấy là hôm nay. Đơn đã xếp nằm ở bảng của từng xưởng. Bấm <b>Xuất ảnh PNG gửi xưởng</b> để lấy ảnh gửi qua Zalo; xuất xong danh sách đó được ẩn và chuyển sang QC.</p></div>
   <div class="bar"><div class="grow"><input type="search" id="mq" placeholder="Tìm mã hoặc tên đơn" value="${esc(F.mayQ)}" aria-label="Tìm đơn"></div></div>
   <div class="sec"><h3>Chờ xếp xưởng <span class="badge${wait.length?' hot':''}">${wait.length}</span></h3>${wait.length?`<div class="cards">${wait.map(card).join('')}</div>`:'<div class="empty">Không có đơn nào chờ xếp xưởng.</div>'}</div>
   <div class="xws">${L['XƯỞNG MAY'].map(xuongBlock).join('')}</div>
-  ${lastSent.length ? `<details class="sec"><summary>Đã xuất ảnh hôm nay (${lastSent.length} đơn) · bấm Hiện lại nếu cần xuất lại</summary>
+  ${lastSent.length ? `<details class="sec"><summary>Đã xuất ảnh hôm nay (${lastSent.length} đơn) · bấm Hiện lại nếu cần xuất lại (đơn đang ở QC)</summary>
     <div class="tbox" style="margin-top:8px"><table><thead><tr><th>Xưởng</th><th>Ngày gửi</th><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Quần</th><th></th></tr></thead><tbody>
     ${lastSent.map(o=>`<tr><td>${esc(o.xuong)}</td><td class="num">${dm(o.ngayGuiMay)}</td><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td class="num">${mAo(o)}</td><td class="num">${mQuan(o)}</td><td><button class="btn ghost sm" type="button" data-unsent="${esc(o.ma)}">Hiện lại</button></td></tr>`).join('')}
     </tbody></table></div></details>` : ''}`;
@@ -616,7 +662,7 @@ async function exportPng(x){
     <span class="hint">Nếu nút tải không chạy (bản chạy thử), bấm giữ hoặc chuột phải vào ảnh để lưu.</span>
     <div class="actions"><button class="btn" type="button" data-dl>Tải ảnh PNG và ẩn danh sách</button><button class="btn ghost" type="button" data-cp>Sao chép ảnh</button><button class="btn ghost" type="button" data-cl>Đóng, chưa ẩn</button></div></div>`;
   document.body.appendChild(m);
-  const hide = () => { m.remove(); bulk(g.map(o=>o.ma), 'may', {xuatAnhLuc: D.today + ' ' + new Date().toTimeString().slice(0,5)}, `Đã xuất ảnh ${g.length} đơn xưởng ${x}. Danh sách đã chuyển sang Đơn hoàn thành.`); };
+  const hide = () => { m.remove(); bulk(g.map(o=>o.ma), 'may', {xuatAnhLuc: D.today + ' ' + new Date().toTimeString().slice(0,5)}, `Đã xuất ảnh ${g.length} đơn xưởng ${x}. Danh sách đã chuyển sang QC.`); };
   m.querySelector('[data-dl]').onclick = () => { try { const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); } catch (e) {} hide(); };
   m.querySelector('[data-cp]').onclick = () => cv.toBlob(b => { try { navigator.clipboard.write([new ClipboardItem({'image/png': b})]).then(() => toast('Đã chép ảnh. Dán vào Zalo là được.'), () => toast('Trình duyệt không cho chép ảnh. Hãy tải ảnh.', true)); } catch (e) { toast('Trình duyệt không cho chép ảnh. Hãy tải ảnh.', true); } });
   m.querySelector('[data-cl]').onclick = () => m.remove();
@@ -771,6 +817,14 @@ function bind(){
   main.querySelectorAll('[data-epback]').forEach(b => b.onclick = () => askReturn(b.dataset.epback));
   main.querySelectorAll('[data-epundo]').forEach(b => b.onclick = () => bulk([b.dataset.epundo], 'ep', {tienDo:'Đã in'}, 'Đã hoàn tác, đơn quay lại Chờ ép'));
   on('mq','input', e => { F.mayQ = e.target.value; rerenderKeep('mq'); });
+  on('qcq','input', e => { F.qcQ = e.target.value; rerenderKeep('qcq'); });
+  const nowTs = () => D.today + ' ' + new Date().toTimeString().slice(0,5);
+  main.querySelectorAll('[data-qcin]').forEach(b => b.onclick = () => bulk([b.dataset.qcin], 'qc', {qcNhanLuc:nowTs()}, 'Đã ghi nhận hàng từ xưởng'));
+  main.querySelectorAll('[data-qcok]').forEach(b => b.onclick = () => bulk([b.dataset.qcok], 'qc', {qcKetQua:'Đạt', qcGhiChu:''}, 'QC đạt, đã báo CS phụ trách'));
+  main.querySelectorAll('[data-qcbad]').forEach(b => b.onclick = () => askQcBad(b.dataset.qcbad));
+  main.querySelectorAll('[data-qcundo]').forEach(b => b.onclick = () => bulk([b.dataset.qcundo], 'qc', {qcKetQua:''}, 'Đã hoàn tác kết quả QC'));
+  main.querySelectorAll('[data-finish]').forEach(b => b.onclick = () => { if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Bấm lần nữa để xác nhận'; setTimeout(() => { if (b.isConnected) { b.dataset.armed = ''; b.textContent = 'Đơn đã hoàn thành'; } }, 4000); return; }
+    bulk([b.dataset.finish], 'xong', {hoanThanhLuc:nowTs()}, 'Đơn đã chuyển vào Đơn hoàn thành'); });
   on('htq','input', e => { F.htQ = e.target.value; rerenderKeep('htq'); });
   on('htcs','change', e => { F.htCs = e.target.value; render(); });
   on('htx','change', e => { F.htX = e.target.value; render(); });

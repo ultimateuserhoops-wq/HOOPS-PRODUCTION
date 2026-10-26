@@ -128,9 +128,9 @@ details summary{cursor:pointer;font-weight:700}
 .todo-i:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .todo-i .stepno{background:var(--accent-soft);color:var(--accent)}
 .todo-i .arr{margin-left:auto;color:var(--muted)}
-.flow-steps{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.flow-steps{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .flow-steps span{border-bottom:2px solid var(--line2);padding-bottom:4px}
-.pipe{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.pipe{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
 .stage{background:var(--paper);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-width:0;overflow:hidden}
 .stage.has-late{border-top:3px solid var(--red-ink)}
 .stage-h{all:unset;box-sizing:border-box;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;padding:10px 12px;background:var(--head);width:100%}
@@ -223,3 +223,4 @@ td.wrap{white-space:normal;min-width:150px}
 .olink-inline:focus-visible{outline:2px solid var(--accent)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .plan-l+.plan-l{margin-top:-1px}
+.sub-h{font-weight:800;font-size:13.5px;margin-top:4px}
