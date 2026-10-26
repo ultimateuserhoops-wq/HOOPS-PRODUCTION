@@ -230,7 +230,7 @@ function openOrder(ma){
     <div class="meta"><span>${pTag(o.uuTien)}</span><span>Xong in ép <b>${dm(o.ngayInEp)}</b></span><span>Khách nhận <b>${dm(o.ngayKhach)}</b></span><span>${remTag(o)}</span></div>
     <div class="meta"><span>Đang ở chặng <b>${esc(stageOf(o).name)}</b></span></div>
     <ol class="tline">${steps.join('')}</ol>
-    <div class="actions"><button class="btn sm" type="button" data-zalo2="${esc(o.ma)}">Chép tin Zalo</button>${canSee(stageOf(o).view)?`<button class="btn ghost sm" type="button" data-go="${stageOf(o).view}" data-close>Mở màn hình ${esc(stageOf(o).who)}</button>`:''}</div>
+    <div class="actions">${canSee(stageOf(o).view)?`<button class="btn ghost sm" type="button" data-go="${stageOf(o).view}" data-close>Mở màn hình ${esc(stageOf(o).who)}</button>`:''}</div>
   </aside>`;
   d.hidden = false;
   d.querySelector('.drawer-in .btn[data-close]').focus();
@@ -256,8 +256,8 @@ function vNhap(){
   if (g('ngayInEp') && g('ngayKhach') && diff(g('ngayKhach'), g('ngayInEp')) < 0) w.push('Ngày khách nhận đang sớm hơn ngày cần xong in ép.');
   const mine = D.orders.filter(o => o.cs === (L['CS'].indexOf(ME)>=0 ? ME : o.cs) && (o.taoLuc||'').slice(0,10) >= addDays(D.today,-3)).slice(-12).reverse();
   return `
-  <div class="vhead"><h2>${e ? 'Sửa đơn '+esc(e.ma) : 'Nhập đơn đã ra file rập'}</h2><p class="lede">Lưu xong, web tự sinh mã đơn và đưa đơn sang màn hình BP In. Chép tin Zalo để gửi kèm mã cho BP In.</p></div>
-  ${lastCreated && !e ? `<div class="ok"><span>Đã tạo đơn <b>${esc(lastCreated.ma)}</b> · ${esc(lastCreated.ten)}</span><button class="btn sm" type="button" data-zalo="${esc(lastCreated.ma)}">Chép tin Zalo</button></div>` : ''}
+  <div class="vhead"><h2>${e ? 'Sửa đơn '+esc(e.ma) : 'Nhập đơn đã ra file rập'}</h2><p class="lede">Lưu xong, web tự sinh mã đơn và đưa đơn sang màn hình BP In.</p></div>
+  ${lastCreated && !e ? `<div class="ok"><span>Đã tạo đơn <b>${esc(lastCreated.ma)}</b> · ${esc(lastCreated.ten)}</span></div>` : ''}
   <form class="form" id="fNhap" autocomplete="off">
     <div class="f s6"><label for="n_ten">Tên đơn <span class="req">*</span></label><input type="text" id="n_ten" data-k="ten" value="${esc(g('ten'))}" placeholder="Ví dụ: 20-10 TDS NAVY (U13 TDS ƯU TIÊN)"></div>
     <div class="f s2"><span class="lb">Thương hiệu <span class="req">*</span></span>${e ? `<div><b>${esc(e.th)}</b> <span class="hint">(không đổi được sau khi tạo)</span></div>` : `<div class="seg" role="group" aria-label="Thương hiệu">${L['THƯƠNG HIỆU'].map(t=>`<button type="button" aria-pressed="${g('th')===t}" data-set="th" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div>`}</div>
@@ -272,7 +272,7 @@ function vNhap(){
   </form>
   <div class="sec"><h3>Đơn nhập gần đây${L['CS'].indexOf(ME)>=0 ? ' của '+esc(ME) : ''}</h3>
   ${mine.length ? `<div class="tbox"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>Ưu tiên</th><th>Xong in ép</th><th>Khách nhận</th><th>Tiến độ</th><th></th></tr></thead><tbody>
-  ${mine.map(o=>`<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td>${pTag(o.uuTien)}</td><td class="num">${dm(o.ngayInEp)}</td><td class="num">${dm(o.ngayKhach)}</td><td>${oChip(o)}</td><td><div class="actions"><button class="btn ghost sm" type="button" data-zalo="${esc(o.ma)}">Chép Zalo</button><button class="btn ghost sm" type="button" data-edit="${esc(o.ma)}">Sửa</button></div></td></tr>`).join('')}
+  ${mine.map(o=>`<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td>${pTag(o.uuTien)}</td><td class="num">${dm(o.ngayInEp)}</td><td class="num">${dm(o.ngayKhach)}</td><td>${oChip(o)}</td><td><div class="actions"><button class="btn ghost sm" type="button" data-edit="${esc(o.ma)}">Sửa</button></div></td></tr>`).join('')}
   </tbody></table></div>` : '<div class="empty">Chưa có đơn nào trong 3 ngày qua.</div>'}</div>`;
 }
 function addDays(s, n){ const t = new Date((dayNum(s)+n)*864e5); return t.toISOString().slice(0,10); }
@@ -327,21 +327,28 @@ function vBpIn(){
       <div class="meta"><span>${pTag(o.uuTien)}</span><span>Xong in ép <b>${dm(o.ngayInEp)}</b></span><span>Khách nhận <b>${dm(o.ngayKhach)}</b></span><span>CS <b>${esc(o.cs)}</b></span></div>
       ${o.ghiChuCS?`<div class="cmp">CS ghi: ${esc(o.ghiChuCS)}</div>`:''}
       <div class="seg" role="group" aria-label="Tiến độ">${IN3.map(t=>`<button type="button" aria-pressed="${(v('tienDo')||'Chờ in')===t}" data-set="tienDo" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div>
-      <div class="g3">
+      <div class="blk"><div class="blk-h">Phân công</div>
+      <div class="g4">
+        <div class="f"><span class="lb">Máy in</span><div class="seg seg-full" role="group" aria-label="Máy in">${(L['MÁY IN']||[]).map(m=>`<button type="button" aria-pressed="${v('mayIn')===m}" data-set="mayIn" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div></div>
         <div class="f"><label for="${id('ni')}">Người in</label><select id="${id('ni')}" data-k="nguoiIn">${opts(L['NGƯỜI IN'], v('nguoiIn'), '— chọn —')}</select></div>
         <div class="f"><label for="${id('cu')}">Cuộn</label><select id="${id('cu')}" data-k="cuon">${opts(L['CUỘN'] || [], v('cuon'), '— chọn —')}</select></div>
         <div class="f"><label for="${id('di')}">Ngày đã in</label><input type="date" id="${id('di')}" data-k="ngayDaIn" value="${esc(v('ngayDaIn')||'')}"></div>
-      </div>
-      <div class="g3">
+      </div></div>
+      <div class="blk"><div class="blk-h">Số lượng &amp; vải</div>
+      <div class="qv">
+        <span class="qv-l">Thân</span>
         <div class="f"><label for="${id('sa')}">SL áo</label><input type="number" min="0" inputmode="numeric" id="${id('sa')}" data-k="slAoIn" value="${esc(v('slAoIn'))}"></div>
         <div class="f"><label for="${id('sq')}">SL quần</label><input type="number" min="0" inputmode="numeric" id="${id('sq')}" data-k="slQuanIn" value="${esc(v('slQuanIn'))}"></div>
-        <div class="f"><label for="${id('va')}">Vải</label><select id="${id('va')}" data-k="vai">${opts(L['LOẠI VẢI'] || [], v('vai'), '—')}</select></div>
-      </div>
-      <div class="g3">
+        <div class="f"><label for="${id('va')}">Vải chính</label><select id="${id('va')}" data-k="vai">${opts(L['LOẠI VẢI'] || [], v('vai'), '—')}</select></div>
+        <span class="qv-l">Bo</span>
         <div class="f"><label for="${id('bo')}">SL bo</label><input type="number" min="0" inputmode="numeric" id="${id('bo')}" data-k="slBo" value="${esc(v('slBo'))}"></div>
+        <span></span>
+        <div class="f"><label for="${id('vb')}">Vải bo</label><select id="${id('vb')}" data-k="vaiBo">${opts(L['LOẠI VẢI'] || [], v('vaiBo'), '—')}</select></div>
+        <span class="qv-l">Phối</span>
         <div class="f"><label for="${id('ph')}">SL phối</label><input type="number" min="0" inputmode="numeric" id="${id('ph')}" data-k="slPhoi" value="${esc(v('slPhoi'))}"></div>
-        <div class="f"><label for="${id('vb')}">Vải bo / phối</label><select id="${id('vb')}" data-k="vaiBo">${opts(L['LOẠI VẢI'] || [], v('vaiBo'), '—')}</select></div>
-      </div>
+        <span></span>
+        <div class="f"><label for="${id('vp')}">Vải phối</label><select id="${id('vp')}" data-k="vaiPhoi">${opts(L['LOẠI VẢI'] || [], v('vaiPhoi'), '—')}</select></div>
+      </div></div>
       <div class="f"><label for="${id('gi')}">Ghi chú</label><input type="text" id="${id('gi')}" data-k="ghiChuIn" value="${esc(v('ghiChuIn'))}" placeholder="Ví dụ: thiếu áo polo, chờ vải"></div>
       <div class="actions"><button class="btn" type="button" data-save${isDirty(o.ma,'in')?'':' disabled'}>Lưu</button>${EDIT_IN[o.ma]?`<button class="btn ghost" type="button" data-unedit="${esc(o.ma)}">Hủy sửa</button>`:''}${o.inCapNhat?`<span class="hint">Cập nhật ${esc(dm(o.inCapNhat))} ${esc(o.inCapNhat.slice(11))}</span>`:''}</div>
     </div>`;
@@ -349,16 +356,16 @@ function vBpIn(){
   const grp = g => `<div class="grp" data-grp="${esc(g.key)}">
     <div class="grp-h"><div><b>Cuộn ${esc(g.cuon||'—')}</b> · ${esc(g.nguoi||'—')} · in ${dm(g.ngay)} · ${g.items.length} đơn · ${sumOf(g.items,'slAoIn')} áo · ${sumOf(g.items,'slQuanIn')} quần</div>
       <button class="btn sm" type="button" data-epall="${esc(g.key)}">Confirm chuyển ép cả cuộn</button></div>
-    <div class="tbox" style="border:0;border-radius:0"><table><thead><tr><th>STT</th><th>Đổi vị trí</th><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Quần</th><th>Vải</th><th>Bo</th><th>Phối</th><th>Vải bo/phối</th><th>Chuyển ép</th><th></th></tr></thead><tbody>
+    <div class="tbox" style="border:0;border-radius:0"><table><thead><tr><th>STT</th><th>Đổi vị trí</th><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Quần</th><th>Máy</th><th>Vải</th><th>Bo</th><th>Vải bo</th><th>Phối</th><th>Vải phối</th><th>Chuyển ép</th><th></th></tr></thead><tbody>
     ${g.items.map((o,i)=>`<tr><td class="num"><b>${i+1}</b></td>
       <td><div class="actions" style="flex-wrap:nowrap"><button class="btn ghost sm" type="button" aria-label="Lên" data-mv="-1" data-ma="${esc(o.ma)}"${i===0?' disabled':''}>▲</button><button class="btn ghost sm" type="button" aria-label="Xuống" data-mv="1" data-ma="${esc(o.ma)}"${i===g.items.length-1?' disabled':''}>▼</button></div></td>
       <td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.ghiChuIn?`<div class="hint">${esc(o.ghiChuIn)}</div>`:''}</td>
-      <td class="num">${nz(o.slAoIn)}</td><td class="num">${nz(o.slQuanIn)}</td><td>${esc(o.vai||'—')}</td><td class="num">${nz(o.slBo)}</td><td class="num">${nz(o.slPhoi)}</td><td>${esc(o.vaiBo||'—')}</td>
+      <td class="num">${nz(o.slAoIn)}</td><td class="num">${nz(o.slQuanIn)}</td><td>${esc(o.mayIn||'—')}</td><td>${esc(o.vai||'—')}</td><td class="num">${nz(o.slBo)}</td><td>${esc(o.vaiBo||'—')}</td><td class="num">${nz(o.slPhoi)}</td><td>${esc(o.vaiPhoi||'—')}</td>
       <td><label class="chk"><input type="checkbox" data-ep1="${esc(o.ma)}"> Confirm</label></td>
       <td><button class="btn ghost sm" type="button" data-reedit="${esc(o.ma)}">Sửa</button></td></tr>`).join('')}
     </tbody></table></div></div>`;
   return `
-  <div class="vhead"><h2>BP In cập nhật tiến độ</h2><p class="lede">Tìm theo mã đơn trong tin Zalo. Khi in xong, chọn <b>Đã in</b>, ghi người in, cuộn, số lượng rồi bấm Lưu. Đơn sẽ xuống danh sách đã in bên dưới và về danh sách của CS. Sắp lại thứ tự trong cuộn, rồi tick <b>Confirm</b> để chuyển sang BP Ép.</p></div>
+  <div class="vhead"><h2>BP In cập nhật tiến độ</h2><p class="lede">Tìm theo mã hoặc tên đơn. Khi in xong, chọn <b>Đã in</b>, ghi máy in, người in, cuộn, số lượng và vải từng phần (thân, bo, phối) rồi bấm Lưu. Đơn sẽ xuống danh sách đã in bên dưới và về danh sách của CS. Sắp lại thứ tự trong cuộn, rồi tick <b>Confirm</b> để chuyển sang BP Ép.</p></div>
   <div class="bar"><div class="grow"><input type="search" id="bpq" placeholder="Nhập mã (ví dụ H2610-237) hoặc tên đơn" value="${esc(F.bpq)}" aria-label="Tìm đơn"></div></div>
   <div class="sec"><h3>Cần in <span class="badge">${todo.length}</span></h3>${todo.length ? `<div class="cards">${todo.map(card).join('')}</div>` : '<div class="empty">Không còn đơn nào cần in. Đơn mới CS nhập sẽ hiện ở đây.</div>'}</div>
   <div class="sec"><h3>Đã in, chờ chuyển ép <span class="badge${doneG.length?' hot':''}">${doneG.reduce((s,g)=>s+g.items.length,0)}</span></h3>
@@ -371,25 +378,30 @@ function vBpEp(){
   const L = D.lists;
   const match = o => !F.bpq || (o.ma+' '+o.ten).toUpperCase().indexOf(F.bpq.toUpperCase()) >= 0;
   const waitG = rollGroups(D.orders.filter(o => o.tienDo === 'Đã in' && o.chuyenEp && match(o)));
-  const recent = D.orders.filter(o => o.tienDo === 'Đã ép' && o.ngayDaEp && diff(D.today, o.ngayDaEp) <= 2 && match(o)).sort((a,b)=>b.ngayDaEp.localeCompare(a.ngayDaEp));
+  // Chỉ giữ đơn ép hôm nay để hoàn tác khi bấm nhầm; đơn ép từ hôm qua trở về trước không hiện nữa
+  const recent = D.orders.filter(o => o.tienDo === 'Đã ép' && o.ngayDaEp === D.today && match(o));
+  const days = Array.from(new Set(waitG.map(g => g.ngay))).sort();
+  const wd = s => s ? ['CN','T2','T3','T4','T5','T6','T7'][new Date(dayNum(s)*864e5).getUTCDay()] : '';
   const ef = k => EPF[k] || (EPF[k] = {epLe:'CUỘN', ngay:D.today});
   const grp = g => { const e = ef(g.key); return `<div class="grp">
-    <div class="grp-h"><div><b>Cuộn ${esc(g.cuon||'—')}</b> · in bởi ${esc(g.nguoi||'—')} ngày ${dm(g.ngay)} · ${g.items.length} đơn · ${sumOf(g.items,'slAoIn')} áo · ${sumOf(g.items,'slQuanIn')} quần</div>
+    <div class="grp-h"><div><b>Cuộn ${esc(g.cuon||'—')}</b> · ${esc(g.nguoi||'—')}${g.items[0].mayIn?' · '+esc(g.items[0].mayIn):''} · ${g.items.length} đơn · ${sumOf(g.items,'slAoIn')} áo · ${sumOf(g.items,'slQuanIn')} quần</div>
       <div class="actions"><select data-epf="epLe" data-key="${esc(g.key)}" aria-label="Ép lẻ hay cuộn" style="width:auto">${opts(L['ÉP LẺ/CUỘN'], e.epLe)}</select>
       <input type="date" data-epf="ngay" data-key="${esc(g.key)}" value="${esc(e.ngay)}" aria-label="Ngày ép" style="width:auto">
       <button class="btn sm" type="button" data-epdoneall="${esc(g.key)}">Đã ép cả cuộn</button></div></div>
     <div class="tbox" style="border:0;border-radius:0"><table><thead><tr><th>STT</th><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Quần</th><th>Vải</th><th>Bo</th><th>Phối</th><th>Hạn</th><th></th></tr></thead><tbody>
-    ${g.items.map((o,i)=>`<tr><td class="num"><b>${i+1}</b></td><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td class="num">${nz(o.slAoIn)}</td><td class="num">${nz(o.slQuanIn)}</td><td>${esc(o.vai||'—')}</td><td class="num">${nz(o.slBo)}</td><td class="num">${nz(o.slPhoi)}</td><td>${remTag(o)}</td>
+    ${g.items.map((o,i)=>`<tr><td class="num"><b>${i+1}</b></td><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td class="num">${nz(o.slAoIn)}</td><td class="num">${nz(o.slQuanIn)}</td><td>${esc(o.vai||'—')}</td><td class="num">${nz(o.slBo)}${o.vaiBo?`<div class="hint">${esc(o.vaiBo)}</div>`:''}</td><td class="num">${nz(o.slPhoi)}${o.vaiPhoi?`<div class="hint">${esc(o.vaiPhoi)}</div>`:''}</td><td>${remTag(o)}</td>
       <td><div class="actions" style="flex-wrap:nowrap"><button class="btn sm" type="button" data-epdone="${esc(o.ma)}" data-key="${esc(g.key)}">Đã ép</button><button class="btn ghost sm" type="button" data-epback="${esc(o.ma)}">Trả về BP In</button></div></td></tr>`).join('')}
     </tbody></table></div></div>`; };
   return `
-  <div class="vhead"><h2>BP Ép</h2><p class="lede">Đơn BP In đã confirm chuyển ép hiện ở đây, theo đúng thứ tự trên cuộn. Ép xong bấm <b>Đã ép</b>, hoặc <b>Đã ép cả cuộn</b>. Đơn đã ép chuyển sang Kế hoạch may.</p></div>
+  <div class="vhead"><h2>BP Ép</h2><p class="lede">Đơn BP In đã confirm chuyển ép, xếp theo <b>ngày in</b> (cũ nhất ở trên), trong mỗi ngày theo cuộn và đúng thứ tự trên cuộn. Ép xong bấm <b>Đã ép</b>, hoặc <b>Đã ép cả cuộn</b>. Đơn đã ép chuyển sang Kế hoạch may và rời khỏi màn hình này.</p></div>
   <div class="bar"><div class="grow"><input type="search" id="bpq" placeholder="Nhập mã hoặc tên đơn" value="${esc(F.bpq)}" aria-label="Tìm đơn"></div></div>
-  <div class="sec"><h3>Chờ ép <span class="badge${waitG.length?' hot':''}">${waitG.reduce((s,g)=>s+g.items.length,0)}</span></h3>${waitG.length ? waitG.map(grp).join('') : '<div class="empty">Không có đơn nào chờ ép.</div>'}</div>
-  <div class="sec"><h3>Đã ép trong 3 ngày qua <span class="badge">${recent.length}</span></h3>
-  ${recent.length ? `<div class="tbox"><table><thead><tr><th>Ngày ép</th><th>Cuộn</th><th>Mã</th><th>Tên đơn</th><th>Ép</th><th>Áo</th><th>Quần</th><th></th></tr></thead><tbody>
-  ${recent.map(o=>`<tr><td class="num">${dm(o.ngayDaEp)}</td><td>${esc(o.cuon||'—')}</td><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td>${esc(o.epLe||'')}</td><td class="num">${nz(o.slAoIn)}</td><td class="num">${nz(o.slQuanIn)}</td><td>${o.xuong?'<span class="hint">đã xếp xưởng</span>':`<button class="btn ghost sm" type="button" data-epundo="${esc(o.ma)}">Hoàn tác</button>`}</td></tr>`).join('')}
-  </tbody></table></div>` : '<div class="empty">Chưa có.</div>'}</div>`;
+  <div class="sec"><h3>Chờ ép <span class="badge${waitG.length?' hot':''}">${waitG.reduce((s,g)=>s+g.items.length,0)}</span></h3></div>
+  ${waitG.length ? days.map(d => { const gs = waitG.filter(g => g.ngay === d), n = gs.reduce((s,g)=>s+g.items.length,0), late = diff(D.today, d);
+    return `<div class="sec day"><div class="day-h"><b>In ${wd(d)} ${dmy(d)}</b><span class="hint">${gs.length} cuộn · ${n} đơn · ${gs.reduce((s,g)=>s+sumOf(g.items,'slAoIn'),0)} áo · ${gs.reduce((s,g)=>s+sumOf(g.items,'slQuanIn'),0)} quần</span>${late>=2?`<span class="rem r-or">chờ ${late} ngày</span>`:''}</div>${gs.map(grp).join('')}</div>`; }).join('') : '<div class="empty">Không có đơn nào chờ ép.</div>'}
+  ${recent.length ? `<details class="sec"><summary>Đã ép hôm nay (${recent.length}) · bấm Hoàn tác nếu bấm nhầm</summary>
+  <div class="tbox" style="margin-top:8px"><table><thead><tr><th>Cuộn</th><th>Mã</th><th>Tên đơn</th><th>Ép</th><th>Áo</th><th>Quần</th><th></th></tr></thead><tbody>
+  ${recent.map(o=>`<tr><td>${esc(o.cuon||'—')}</td><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td>${esc(o.epLe||'')}</td><td class="num">${nz(o.slAoIn)}</td><td class="num">${nz(o.slQuanIn)}</td><td>${o.xuong?'<span class="hint">đã xếp xưởng</span>':`<button class="btn ghost sm" type="button" data-epundo="${esc(o.ma)}">Hoàn tác</button>`}</td></tr>`).join('')}
+  </tbody></table></div></details>` : ''}`;
 }
 
 /* ---------- 4. Của tôi (CS) ---------- */
@@ -439,10 +451,13 @@ function vMay(){
   const card = o => {
     const v = k => val(o,'may',k);
     return `<div class="card p-${pLevel(o.uuTien)}${isDirty(o.ma,'may')?' dirty':''}" data-ma="${esc(o.ma)}" data-sec="may">
-      <div class="ch"><div><div class="mono">${esc(o.ma)} · ${esc(o.th)} · CS ${esc(o.cs)}</div><div class="t">${esc(o.ten)}</div></div><span class="num">KH ${dm(o.ngayKhach)}</span></div>
-      ${o.confirm ? `<div class="cmp"><b>${nz(o.slAo)} áo · ${nz(o.slQuan)} quần</b> (CS xác nhận)${o.chiTiet?' · '+esc(o.chiTiet):''}</div>`
-        : `<div class="cmp diff">CS chưa xác nhận SL. BP In đã in: <b>${nz(o.slAoIn)} áo · ${nz(o.slQuanIn)} quần</b></div>`}
-      <div class="meta"><span>Ép ngày <b>${dm(o.ngayDaEp)}</b></span><span>Cuộn <b>${esc(o.cuon||'—')}</b></span><span>Vải <b>${esc(o.vai||'—')}</b></span>${N0(o.slBo)?`<span>Bo <b>${o.slBo}</b></span>`:''}${N0(o.slPhoi)?`<span>Phối <b>${o.slPhoi}</b></span>`:''}</div>
+      <div class="ch"><div><div class="mono">${esc(o.ma)} · ${esc(o.th)} · CS ${esc(o.cs)}</div><div class="t">${esc(o.ten)}</div></div></div>
+      <div class="plan">
+        <div class="plan-d"><small>Khách nhận</small><b>${dm(o.ngayKhach)}</b>${khTag(o)}</div>
+        <div class="plan-q"><small>Áo</small><b>${mAo(o)||'—'}</b></div>
+        <div class="plan-q"><small>Quần</small><b>${mQuan(o)||'—'}</b></div>
+      </div>
+      <div class="cmp${o.confirm?'':' diff'}">${o.chiTiet?`<b>${esc(o.chiTiet)}</b>`:'<span>Chưa có loại áo quần</span>'}${o.confirm?'':' · CS chưa xác nhận, tạm theo số BP In'}</div>
       <div class="seg" role="group" aria-label="Xưởng may">${L['XƯỞNG MAY'].map(x=>`<button type="button" aria-pressed="${v('xuong')===x}" data-set="xuong" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>
       <div class="g2">
         <div class="f"><label for="mg_${esc(o.ma)}">Ngày gửi may</label><input type="date" id="mg_${esc(o.ma)}" data-k="ngayGuiMay" value="${esc(v('ngayGuiMay')||'')}"></div>
@@ -453,13 +468,13 @@ function vMay(){
     </div>`;
   };
   return `
-  <div class="vhead"><h2>Kế hoạch may</h2><p class="lede">Đơn BP Ép đã xác nhận Đã ép hiện ở đây. Số lượng lấy theo CS nếu CS đã CONFIRM, nếu chưa thì tạm lấy số BP In đã in. Chọn xưởng, ngày gửi và ngày xưởng trả. Mỗi nhóm xưởng và ngày gửi có nút chép nội dung để gửi xưởng qua Zalo.</p></div>
+  <div class="vhead"><h2>Kế hoạch may</h2><p class="lede">Đơn đã ép, xếp theo <b>ngày khách nhận</b> gần nhất trước. Mỗi thẻ chỉ hiện ngày nhận, số áo quần và loại áo quần. Số lượng lấy theo CS nếu CS đã CONFIRM, nếu chưa thì tạm lấy số BP In. Chọn xưởng, ngày gửi và ngày xưởng trả. Mỗi nhóm xưởng và ngày gửi có nút chép nội dung để gửi xưởng qua Zalo.</p></div>
   <div class="bar"><div class="grow"><input type="search" id="mq" placeholder="Tìm mã hoặc tên đơn" value="${esc(F.mayQ)}" aria-label="Tìm đơn"></div><select id="mx" aria-label="Xưởng">${opts(L['XƯỞNG MAY'], F.mayX, 'Mọi xưởng')}</select></div>
   <div class="sec"><h3>Chờ xếp xưởng <span class="badge${wait.length?' hot':''}">${wait.length}</span></h3>${wait.length?`<div class="cards">${wait.map(card).join('')}</div>`:'<div class="empty">Không có đơn nào chờ xếp xưởng.</div>'}</div>
   <div class="sec"><h3>Đã xếp xưởng</h3>
   ${gk.length ? gk.map(k => { const [x, ng] = k.split('|'); const g = groups[k]; const ao = g.reduce((s,o)=>s+mAo(o),0), qu = g.reduce((s,o)=>s+mQuan(o),0);
     return `<div class="grp"><div class="grp-h"><div><b>Xưởng ${esc(x)}</b> · gửi ${ng?dmy(ng):'(chưa có ngày)'} · ${g.length} đơn · ${ao} áo · ${qu} quần</div><button class="btn sm" type="button" data-copygrp="${esc(k)}">Chép nội dung gửi xưởng</button></div>
-    <div class="tbox" style="border:0;border-radius:0"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Quần</th><th>Chi tiết</th><th>Khách nhận</th><th>Xưởng trả</th><th></th></tr></thead><tbody>
+    <div class="tbox" style="border:0;border-radius:0"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Quần</th><th>Loại áo quần</th><th>Khách nhận</th><th>Xưởng trả</th><th></th></tr></thead><tbody>
     ${g.map(o=>`<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td class="num">${mAo(o)}</td><td class="num">${mQuan(o)}</td><td style="white-space:normal;min-width:180px">${esc(o.chiTiet)}${o.ghiChuMay?`<div class="hint">${esc(o.ghiChuMay)}</div>`:''}</td><td class="num">${dm(o.ngayKhach)}</td><td class="num">${dm(o.ngayTraMay)}</td><td><button class="btn ghost sm" type="button" data-unplan="${esc(o.ma)}">Sửa</button></td></tr>`).join('')}
     </tbody></table></div></div>`; }).join('') : '<div class="empty">Chưa xếp đơn nào.</div>'}
   </div>`;
@@ -570,6 +585,12 @@ async function delTk(id){
   catch (err) { if (errMsg(err) === '__auth__') return; toast(errMsg(err), true); }
 }
 
+function khTag(o){
+  const n = diff(o.ngayKhach, D.today);
+  if (n === null) return '';
+  const c = n < 0 ? 'r-red' : n <= 2 ? 'r-or' : n <= 5 ? 'r-ye' : 'r-no';
+  return `<span class="rem ${c}">${n < 0 ? 'trễ '+(-n)+' ngày' : n === 0 ? 'hôm nay' : 'còn '+n+' ngày'}</span>`;
+}
 const mAo = o => o.confirm && o.slAo !== '' ? N0(o.slAo) : N0(o.slAoIn);
 const mQuan = o => o.confirm && o.slQuan !== '' ? N0(o.slQuan) : N0(o.slQuanIn);
 function groupText(k){

@@ -162,3 +162,19 @@ button.stage-h:focus-visible{outline:2px solid var(--accent);outline-offset:-2px
 .tl-h{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 @media (max-width:1000px){.pipe{grid-template-columns:repeat(3,minmax(0,1fr))}.flow-steps{display:none}}
 @media (max-width:560px){.pipe{grid-template-columns:1fr}}
+/* BP In: thẻ chia khối */
+.blk{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:8px}
+.blk-h{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.g4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.seg-full{display:flex}.seg-full button{flex:1;text-align:center}
+.qv{display:grid;grid-template-columns:44px repeat(3,minmax(0,1fr));gap:6px 8px;align-items:end}
+.qv-l{font-size:12.5px;font-weight:800;padding-bottom:9px}
+/* BP Ép: nhóm theo ngày in */
+.day{gap:8px}
+.day-h{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:4px 2px;border-bottom:2px solid var(--line2)}
+.day-h b{font-size:15px}
+/* Kế hoạch may: ngày nhận + số lượng */
+.plan{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px}
+.plan>div{background:var(--head);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:2px;align-items:flex-start}
+.plan small{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.plan b{font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums}

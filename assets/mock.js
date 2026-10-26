@@ -2,9 +2,9 @@
 /* ============ Chạy thử: dữ liệu mẫu ============ */
 const MOCK = (() => {
   const VAI = ['PREMIUM','PRE NGƯỢC','ELITE','ELITE NGƯỢC','2 DA MỀM','2 DA CỨNG','Z2','MAX AIR','BÓNG CHIẾU','KAMI','DƯƠNG HUY','DH NGƯỢC','VẢI LƯỚI','POLY X','ACTIVE','MK50','PRO'];
-  const lists = {'THƯƠNG HIỆU':['HOOPS','AKU'],'CS':['QUYÊN','TRINH','VY','HOÀ'],'MỨC ƯU TIÊN':['MỨC 1 - SIÊU GẤP','MỨC 2 - GẤP','MỨC 3 - BÌNH THƯỜNG'],'TIẾN ĐỘ IN':['Chờ in','Đang in','Đã in','Đã ép'],'NGƯỜI IN':['AN THỨC','VĂN TÀI','HẢO'],'ÉP LẺ/CUỘN':['CUỘN','ÉP LẺ'],'XƯỞNG MAY':['CMT8','HÒA NHƠN'],'NGƯỜI LÊN KẾ HOẠCH MAY':['QUYÊN'],'ĐẨY VỀ CS KHI':['Đã in'],'CUỘN':['N1','N2','N3','N4','N5','T1','T2','T3','T4','T5','H1','H2','H3','C1','C2','C3','V1'],'LOẠI VẢI':VAI};
+  const lists = {'THƯƠNG HIỆU':['HOOPS','AKU'],'CS':['QUYÊN','TRINH','VY','HOÀ'],'MỨC ƯU TIÊN':['MỨC 1 - SIÊU GẤP','MỨC 2 - GẤP','MỨC 3 - BÌNH THƯỜNG'],'TIẾN ĐỘ IN':['Chờ in','Đang in','Đã in','Đã ép'],'NGƯỜI IN':['AN THỨC','VĂN TÀI','HẢO'],'ÉP LẺ/CUỘN':['CUỘN','ÉP LẺ'],'XƯỞNG MAY':['CMT8','HÒA NHƠN'],'NGƯỜI LÊN KẾ HOẠCH MAY':['QUYÊN'],'ĐẨY VỀ CS KHI':['Đã in'],'MÁY IN':['MÁY MỚI','MÁY CŨ'],'CUỘN':['N1','N2','N3','N4','N5','T1','T2','T3','T4','T5','H1','H2','H3','C1','C2','C3','V1'],'LOẠI VẢI':VAI};
   const M1='MỨC 1 - SIÊU GẤP', M2='MỨC 2 - GẤP', M3='MỨC 3 - BÌNH THƯỜNG';
-  const mk = (ma,ten,th,cs,u,f,ie,k,td,ni,extra) => Object.assign({ma,taoLuc:f+' 09:00',nguoiTao:cs,ten,th,cs,uuTien:u,ngayFinal:f,ngayInEp:ie,ngayKhach:k,ghiChuCS:'',tienDo:td,nguoiIn:ni,epLe:'',slAoIn:'',slQuanIn:'',ghiChuIn:'',inCapNhat:ni?'2026-10-20 08:30':'',slAo:'',slQuan:'',chiTiet:'',confirm:false,csCapNhat:'',xuong:'',ngayGuiMay:'',ngayTraMay:'',ghiChuMay:'',mayCapNhat:'',ngayDaIn:'',ngayDaEp:'',cuon:'',sttCuon:'',vai:'',slBo:'',slPhoi:'',vaiBo:'',chuyenEp:false,chuyenEpLuc:'',epCapNhat:''}, extra||{});
+  const mk = (ma,ten,th,cs,u,f,ie,k,td,ni,extra) => Object.assign({ma,taoLuc:f+' 09:00',nguoiTao:cs,ten,th,cs,uuTien:u,ngayFinal:f,ngayInEp:ie,ngayKhach:k,ghiChuCS:'',tienDo:td,nguoiIn:ni,epLe:'',slAoIn:'',slQuanIn:'',ghiChuIn:'',inCapNhat:ni?'2026-10-20 08:30':'',slAo:'',slQuan:'',chiTiet:'',confirm:false,csCapNhat:'',xuong:'',ngayGuiMay:'',ngayTraMay:'',ghiChuMay:'',mayCapNhat:'',ngayDaIn:'',ngayDaEp:'',cuon:'',sttCuon:'',vai:'',slBo:'',slPhoi:'',vaiBo:'',vaiPhoi:'',mayIn:'',chuyenEp:false,chuyenEpLuc:'',epCapNhat:''}, extra||{});
   const DONE = (day, ni, cuon, stt, ao, quan, vai, bo, extra) => Object.assign({ngayDaIn:day, nguoiIn:ni, cuon, sttCuon:stt, slAoIn:ao, slQuanIn:quan, vai, slBo:bo||'', vaiBo:bo?'2 DA MỀM':''}, extra||{});
   const EP = (day, le) => ({chuyenEp:true, ngayDaEp:day, epLe:le||'CUỘN'});
   const orders = [
@@ -40,7 +40,10 @@ const MOCK = (() => {
    ['H2610-161','DEAGLES - LÊ MINH','HOOPS','TRINH',M1,'2026-10-15','2026-10-17','2026-10-20','AN THỨC',83,52,'2026-10-17','C1','PRE NGƯỢC'],
    ['H2610-170','DRAGONS - JEROME','HOOPS','VY',M3,'2026-10-14','2026-10-19','2026-10-26','HẢO',27,25,'2026-10-19','C2','PRE NGƯỢC'],
   ].forEach((x,n) => orders.push(mk(x[0],x[1],x[2],x[3],x[4],x[5],x[6],x[7],'Đã ép',x[8],Object.assign(DONE(x[11],x[8],x[12],n+1,x[9],x[10],x[13],x[9]),EP(x[11]),{inCapNhat:x[11]+' 17:00',slAo:x[9],slQuan:x[10],confirm:true,xuong:x[2]==='AKU'?'HÒA NHƠN':'CMT8',ngayGuiMay:x[11],ngayTraMay:x[7]}))));
-  const SEC = {don:['ten','cs','uuTien','ngayFinal','ngayInEp','ngayKhach','ghiChuCS'], in:['tienDo','nguoiIn','cuon','slAoIn','slQuanIn','vai','slBo','slPhoi','vaiBo','ghiChuIn','ngayDaIn','chuyenEp'], ep:['tienDo','epLe','ngayDaEp'], cs:['slAo','slQuan','chiTiet','confirm'], may:['xuong','ngayGuiMay','ngayTraMay','ghiChuMay']};
+  // Máy in mẫu theo người in; vài đơn có vải phối khác vải bo
+  orders.forEach(o => { if (o.nguoiIn && o.tienDo !== 'Chờ in') o.mayIn = o.nguoiIn === 'VĂN TÀI' ? 'MÁY CŨ' : 'MÁY MỚI'; });
+  [['H2610-246',8,'ELITE'],['H2610-237',4,'2 DA CỨNG'],['H2610-171',6,'Z2']].forEach(([ma,n,v]) => { const o = orders.find(x => x.ma === ma); o.slPhoi = n; o.vaiPhoi = v; });
+  const SEC = {don:['ten','cs','uuTien','ngayFinal','ngayInEp','ngayKhach','ghiChuCS'], in:['tienDo','mayIn','nguoiIn','cuon','slAoIn','slQuanIn','vai','slBo','slPhoi','vaiBo','vaiPhoi','ghiChuIn','ngayDaIn','chuyenEp'], ep:['tienDo','epLe','ngayDaEp'], cs:['slAo','slQuan','chiTiet','confirm'], may:['xuong','ngayGuiMay','ngayTraMay','ghiChuMay']};
   const STAMP = {in:'inCapNhat', ep:'epCapNhat', cs:'csCapNhat', may:'mayCapNhat'};
   const NUMK = ['slAoIn','slQuanIn','slAo','slQuan','slBo','slPhoi'];
   const now = () => '2026-10-20 ' + new Date().toTimeString().slice(0,5);
