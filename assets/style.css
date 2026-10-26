@@ -202,3 +202,24 @@ td.wrap{white-space:normal;min-width:150px}
 .modal-img{max-width:min(1000px,100%);max-height:calc(100vh - 32px)}
 .imgbox{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:60vh;background:#fff}
 .imgbox img{display:block;width:100%;height:auto}
+/* Chuông thông báo */
+.bell{all:unset;cursor:pointer;position:relative;display:grid;place-items:center;width:34px;height:34px;border-radius:8px;border:1px solid var(--line2);color:var(--ink)}
+.bell:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bell-n{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:99px;background:var(--red-ink);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+.bell-p{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));width:min(380px,calc(100% - 32px));max-height:70vh;overflow-y:auto;background:var(--paper);border:1px solid var(--line2);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:35;display:flex;flex-direction:column}
+.bell-h{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.bell-i{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px}
+.bell-i span{color:var(--muted);font-size:12.5px}
+.bell-i.new{background:var(--accent-soft)}
+.bell-i.hot b{color:var(--red-ink)}
+.bell-i:hover{background:var(--head)}
+.bell-i:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* Khối báo trả về / đã ép */
+.alert{background:var(--red);color:var(--red-ink);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.alert-r{color:var(--ink);background:var(--paper);border-radius:8px;padding:8px 10px}
+.okbox{background:var(--green);color:var(--green-ink);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+.okbox-l{display:flex;flex-direction:column;gap:3px;color:var(--ink);font-size:13px}
+.olink-inline{all:unset;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.olink-inline:focus-visible{outline:2px solid var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.plan-l+.plan-l{margin-top:-1px}

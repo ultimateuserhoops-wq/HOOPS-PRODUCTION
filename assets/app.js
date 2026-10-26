@@ -161,10 +161,11 @@ function render(){
   const late = notDone.filter(o => diff(o.ngayInEp, D.today) < 0).length;
   const myTodo = D.orders.filter(o => o.cs === F.myCs && reached(o) && !o.confirm).length;
   const mayTodo = D.orders.filter(o => o.confirm && !o.xuong).length;
-  const badges = {tiendo: late ? `<span class="badge hot">${late} trễ</span>` : '', bpin:`<span class="badge">${notDone.length}</span>`, cuatoi: myTodo ? `<span class="badge hot">${myTodo}</span>` : '', may: mayTodo ? `<span class="badge hot">${mayTodo}</span>` : ''};
+  const badges = {tiendo: late ? `<span class="badge hot">${late} trễ</span>` : '', bpin:D.orders.some(o=>o.lyDoTraVe&&!o.chuyenEp&&o.tienDo==='Đã in')?`<span class="badge hot">trả về</span>`:`<span class="badge">${notDone.length}</span>`, cuatoi: myTodo ? `<span class="badge hot">${myTodo}</span>` : '', may: mayTodo ? `<span class="badge hot">${mayTodo}</span>` : ''};
   $('#nav').innerHTML = myViews().map(v => `<button role="tab" type="button" aria-selected="${v.id===VIEW}" data-v="${v.id}">${v.step?`<span class="stepno">${v.step}</span>`:''}${v.name}${badges[v.id]||''}</button>`).join('');
   const noRole = ROLES.length ? '' : '<div class="demo"><b>Tài khoản này chưa có vai trò hợp lệ</b>, nên chỉ xem được Tiến độ. Quản lý ghi ở cột VAI TRÒ (tab TAI_KHOAN) một hoặc nhiều vai trò: CS, BP IN, BP ÉP, KẾ HOẠCH MAY, TK, QUẢN LÝ, cách nhau bằng dấu phẩy. Sau đó bấm Đăng xuất rồi đăng nhập lại.</div>';
   const demo = (IS_LIVE ? '' : '<div class="demo"><b>Bản chạy thử.</b> Dữ liệu là đơn mẫu, chỉ lưu tạm trong trang này và mất khi tải lại. Bản thật ghi thẳng vào Google Sheet.</div>') + noRole;
+  renderBell();
   const v = {xong:vXong, quytrinh:vQuyTrinh, nhap:vNhap, tiendo:vTienDo, bpin:vBpIn, cuatoi:vCuaToi, may:vMay, bpep:vBpEp, slin:vSlIn, tk:vTk}[VIEW]();
   const keepScroll = window.scrollY;
   $('#main').innerHTML = demo + v;
@@ -172,6 +173,33 @@ function render(){
   bind();
 }
 $('#nav').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (!b) return; VIEW = b.dataset.v; store.set('view', VIEW); window.scrollTo(0,0); render(); });
+
+/* ---------- Thông báo trong web (chuông): tính từ dữ liệu đơn, theo vai trò người đăng nhập ---------- */
+function notifs(){
+  const out = [], recent = d => d && diff(D.today, d.slice(0,10)) <= 2;
+  const mineCs = o => has('QUẢN LÝ') || o.cs === ME;
+  if (has('BP IN')) D.orders.filter(o => o.lyDoTraVe && !o.chuyenEp && o.tienDo === 'Đã in').forEach(o =>
+    out.push({id:'tv|'+o.ma+'|'+o.traVeLuc, at:o.traVeLuc, hot:true, ma:o.ma, go:'bpin', t:`BP Ép trả về ${o.ma} · ${o.ten}`, d:'Lý do: ' + o.lyDoTraVe}));
+  if (has('CS')) D.orders.filter(o => mineCs(o) && o.tienDo === 'Đã ép' && recent(o.ngayDaEp) && !o.xuatAnhLuc).forEach(o =>
+    out.push({id:'ep|'+o.ma, at:o.ngayDaEp, ma:o.ma, go:o.confirm?'':'cuatoi', t:`Đơn ${o.ma} đã ép xong (${dm(o.ngayDaEp)})`, d:o.ten + (o.confirm ? '' : ' · chưa nhập loại áo quần')}));
+  if (has('CS')) D.orders.filter(o => mineCs(o) && o.tienDo === 'Đã in' && recent(o.ngayDaIn) && !o.confirm).forEach(o =>
+    out.push({id:'in|'+o.ma, at:o.ngayDaIn, ma:o.ma, go:'cuatoi', t:`Đơn ${o.ma} đã in xong, cần nhập số lượng`, d:o.ten}));
+  if (has('KẾ HOẠCH MAY')) { const n = D.orders.filter(o => o.tienDo === 'Đã ép' && !o.xuong).length; if (n) out.push({id:'may|'+D.today+'|'+n, at:D.today, go:'may', t:`${n} đơn đã ép chờ xếp xưởng`, d:''}); }
+  return out.sort((a,b) => (b.hot?1:0)-(a.hot?1:0) || String(b.at).localeCompare(String(a.at)));
+}
+const seenSet = () => { try { return new Set(JSON.parse(store.get('seen_'+ME) || '[]')); } catch (e) { return new Set(); } };
+function renderBell(){
+  const n = notifs(), seen = seenSet(), un = n.filter(x => !seen.has(x.id)).length;
+  const b = $('#bellN'); b.hidden = !un; b.textContent = un;
+  const p = $('#bellPanel');
+  p.innerHTML = `<div class="bell-h"><b>Thông báo</b><span class="hint">${n.length ? n.length + ' mục' : ''}</span></div>` + (n.length ? n.map(x => `<button type="button" class="bell-i${seen.has(x.id)?'':' new'}${x.hot?' hot':''}" ${x.ma?`data-open="${esc(x.ma)}"`:`data-go="${x.go}"`}><b>${esc(x.t)}</b>${x.d?`<span>${esc(x.d)}</span>`:''}</button>`).join('') : '<div class="hint" style="padding:12px">Không có thông báo mới.</div>');
+}
+$('#bellBtn').addEventListener('click', e => {
+  e.stopPropagation(); const p = $('#bellPanel'), open = p.hidden;
+  p.hidden = !open; $('#bellBtn').setAttribute('aria-expanded', open);
+  if (open) { const s = seenSet(); notifs().forEach(x => s.add(x.id)); store.set('seen_'+ME, JSON.stringify(Array.from(s).slice(-300))); setTimeout(() => $('#bellN').hidden = true, 600); }
+});
+document.addEventListener('click', e => { if (!e.target.closest('#bellPanel') && !e.target.closest('#bellBtn')) $('#bellPanel').hidden = true; else if (e.target.closest('.bell-i')) $('#bellPanel').hidden = true; });
 
 /* ---------- 0. Quy trình: toàn bộ đơn theo 6 chặng ---------- */
 const STAGES = [
@@ -320,6 +348,7 @@ function vBpIn(){
   const match = o => !F.bpq || (o.ma+' '+o.ten).toUpperCase().indexOf(F.bpq.toUpperCase()) >= 0;
   const todo = D.orders.filter(o => ((o.tienDo !== 'Đã in' && o.tienDo !== 'Đã ép') || EDIT_IN[o.ma]) && match(o))
     .sort((a,b) => (EDIT_IN[b.ma]?1:0)-(EDIT_IN[a.ma]?1:0) || pLevel(a.uuTien)-pLevel(b.uuTien) || (a.ngayInEp||'9').localeCompare(b.ngayInEp||'9'));
+  const backs = D.orders.filter(o => o.lyDoTraVe && !o.chuyenEp && o.tienDo === 'Đã in');
   const doneG = rollGroups(D.orders.filter(o => o.tienDo === 'Đã in' && !o.chuyenEp && !EDIT_IN[o.ma] && match(o)));
   const card = o => {
     const v = k => val(o,'in',k), id = k => k + '_' + esc(o.ma);
@@ -332,7 +361,7 @@ function vBpIn(){
       <div class="g4">
         <div class="f"><span class="lb">Máy in</span><div class="seg seg-full" role="group" aria-label="Máy in">${(L['MÁY IN']||[]).map(m=>`<button type="button" aria-pressed="${v('mayIn')===m}" data-set="mayIn" data-v="${esc(m)}">${esc(m)}</button>`).join('')}</div></div>
         <div class="f"><label for="${id('ni')}">Người in</label><select id="${id('ni')}" data-k="nguoiIn">${opts(L['NGƯỜI IN'], v('nguoiIn'), '— chọn —')}</select></div>
-        <div class="f"><label for="${id('cu')}">Cuộn</label><select id="${id('cu')}" data-k="cuon">${opts(L['CUỘN'] || [], v('cuon'), '— chọn —')}</select></div>
+        <div class="f"><label for="${id('cu')}">Cuộn</label><input type="text" id="${id('cu')}" data-k="cuon" list="dlCuon" value="${esc(v('cuon'))}" placeholder="Gõ ký hiệu cuộn" autocomplete="off"></div>
         <div class="f"><label for="${id('di')}">Ngày đã in</label><input type="date" id="${id('di')}" data-k="ngayDaIn" value="${esc(v('ngayDaIn')||'')}"></div>
       </div></div>
       <div class="blk"><div class="blk-h">Số lượng &amp; vải</div>
@@ -360,13 +389,15 @@ function vBpIn(){
     <div class="tbox" style="border:0;border-radius:0"><table><thead><tr><th>STT</th><th>Đổi vị trí</th><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Quần</th><th>Máy</th><th>Vải</th><th>Bo</th><th>Vải bo</th><th>Phối</th><th>Vải phối</th><th>Chuyển ép</th><th></th></tr></thead><tbody>
     ${g.items.map((o,i)=>`<tr><td class="num"><b>${i+1}</b></td>
       <td><div class="actions" style="flex-wrap:nowrap"><button class="btn ghost sm" type="button" aria-label="Lên" data-mv="-1" data-ma="${esc(o.ma)}"${i===0?' disabled':''}>▲</button><button class="btn ghost sm" type="button" aria-label="Xuống" data-mv="1" data-ma="${esc(o.ma)}"${i===g.items.length-1?' disabled':''}>▼</button></div></td>
-      <td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.ghiChuIn?`<div class="hint">${esc(o.ghiChuIn)}</div>`:''}</td>
+      <td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.lyDoTraVe?`<div class="warn">BP Ép trả về: ${esc(o.lyDoTraVe)}</div>`:''}${o.ghiChuIn?`<div class="hint">${esc(o.ghiChuIn)}</div>`:''}</td>
       <td class="num">${nz(o.slAoIn)}</td><td class="num">${nz(o.slQuanIn)}</td><td>${esc(o.mayIn||'—')}</td><td>${esc(o.vai||'—')}</td><td class="num">${nz(o.slBo)}</td><td>${esc(o.vaiBo||'—')}</td><td class="num">${nz(o.slPhoi)}</td><td>${esc(o.vaiPhoi||'—')}</td>
       <td><label class="chk"><input type="checkbox" data-ep1="${esc(o.ma)}"> Confirm</label></td>
       <td><button class="btn ghost sm" type="button" data-reedit="${esc(o.ma)}">Sửa</button></td></tr>`).join('')}
     </tbody></table></div></div>`;
   return `
   <div class="vhead"><h2>BP In cập nhật tiến độ</h2><p class="lede">Tìm theo mã hoặc tên đơn. Khi in xong, chọn <b>Đã in</b>, ghi máy in, người in, cuộn, số lượng và vải từng phần (thân, bo, phối) rồi bấm Lưu. Đơn sẽ xuống danh sách đã in bên dưới và về danh sách của CS. Sắp lại thứ tự trong cuộn, rồi tick <b>Confirm</b> để chuyển sang BP Ép.</p></div>
+  <datalist id="dlCuon">${(L['CUỘN']||[]).map(c=>`<option value="${esc(c)}"></option>`).join('')}</datalist>
+  ${backs.length ? `<div class="alert"><b>BP Ép trả về ${backs.length} đơn</b>${backs.map(o=>`<div class="alert-r"><button type="button" class="olink-inline mono" data-open="${esc(o.ma)}">${esc(o.ma)}</button> ${esc(o.ten)} · cuộn ${esc(o.cuon||'—')}<div><b>Lý do:</b> ${esc(o.lyDoTraVe)} <span class="hint">(${esc(dm(o.traVeLuc)+' '+(o.traVeLuc||'').slice(11,16))})</span></div></div>`).join('')}<div class="hint">Sửa xong thì tick lại Confirm chuyển ép ở danh sách đã in bên dưới.</div></div>` : ''}
   <div class="bar"><div class="grow"><input type="search" id="bpq" placeholder="Nhập mã (ví dụ H2610-237) hoặc tên đơn" value="${esc(F.bpq)}" aria-label="Tìm đơn"></div></div>
   <div class="sec"><h3>Cần in <span class="badge">${todo.length}</span></h3>${todo.length ? `<div class="cards">${todo.map(card).join('')}</div>` : '<div class="empty">Không còn đơn nào cần in. Đơn mới CS nhập sẽ hiện ở đây.</div>'}</div>
   <div class="sec"><h3>Đã in, chờ chuyển ép <span class="badge${doneG.length?' hot':''}">${doneG.reduce((s,g)=>s+g.items.length,0)}</span></h3>
@@ -427,6 +458,7 @@ function loaiBlock(o, kind, v){
 function vCuaToi(){
   const L = D.lists, cs = F.myCs;
   const mine = D.orders.filter(o => o.cs === cs);
+  const justEp = mine.filter(o => o.tienDo === 'Đã ép' && o.ngayDaEp && diff(D.today, o.ngayDaEp) <= 2 && !o.xuatAnhLuc).sort((a,b)=>b.ngayDaEp.localeCompare(a.ngayDaEp));
   const todo = mine.filter(o => reached(o) && !o.confirm).sort((a,b)=>(a.ngayKhach||'9').localeCompare(b.ngayKhach||'9'));
   const done = mine.filter(o => reached(o) && o.confirm && !o.xuong);
   const waiting = mine.filter(o => !reached(o)).sort((a,b)=>(a.ngayInEp||'9').localeCompare(b.ngayInEp||'9'));
@@ -446,6 +478,7 @@ function vCuaToi(){
   };
   return `
   <div class="vhead"><h2>Danh sách của CS</h2><p class="lede">Đơn tự về đây khi BP In chuyển sang "${esc(D.pushAt)}". Chọn từng loại áo, loại quần và số lượng (web tự cộng tổng), rồi tick CONFIRM. Đơn đã CONFIRM chuyển sang màn hình Kế hoạch may.</p></div>
+  ${justEp.length ? `<div class="okbox"><b>${justEp.length} đơn của ${has('QUẢN LÝ')?esc(cs):'bạn'} đã ép xong trong 2 ngày qua</b><div class="okbox-l">${justEp.map(o=>`<span><button type="button" class="olink-inline mono" data-open="${esc(o.ma)}">${esc(o.ma)}</button> ${esc(o.ten)} · ép ${dm(o.ngayDaEp)}${o.confirm?' · đã CONFIRM':' · <b>chưa nhập loại áo quần</b>'}</span>`).join('')}</div></div>` : ''}
   ${has('QUẢN LÝ') || L['CS'].indexOf(ME) < 0 ? `<div class="bar"><span class="lb" style="font-weight:700">CS:</span><div class="seg" role="group" aria-label="Chọn CS">${L['CS'].map(c=>`<button type="button" aria-pressed="${c===cs}" data-mycs="${esc(c)}">${esc(c)}</button>`).join('')}</div></div>` : ''}
   <div class="sec"><h3>Cần nhập số lượng <span class="badge${todo.length?' hot':''}">${todo.length}</span></h3>${todo.length?`<div class="cards">${todo.map(card).join('')}</div>`:'<div class="empty">Chưa có đơn nào in xong đang chờ bạn nhập số lượng.</div>'}</div>
   <div class="sec"><h3>Đã CONFIRM, chờ xếp xưởng <span class="badge">${done.length}</span></h3>${done.length?`<div class="cards">${done.map(card).join('')}</div>`:'<div class="empty">Không có.</div>'}</div>
@@ -487,6 +520,9 @@ function vXong(){
 
 /* ---------- 5. Kế hoạch may ---------- */
 // Loại áo / loại quần của 1 đơn, dạng "20 áo bo + 7 jacket"
+const cap1 = t => t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : '';
+// 1 loại: chỉ tên loại ("Áo bạ"); nhiều loại: mỗi dòng "20 Áo bo"
+const loaiLines = (o, kind) => { const r = parseLoai(o.loai)[kind].filter(x => x[0] && +x[1] > 0); return r.length === 1 ? [cap1(r[0][0])] : r.map(x => x[1] + ' ' + cap1(x[0])); };
 const loaiOf = (o, kind) => parseLoai(o.loai)[kind].filter(r => r[0] && +r[1] > 0).map(r => r[1] + ' ' + r[0].toLowerCase()).join(' + ');
 // Đơn đã xuất ảnh gửi xưởng = hoàn thành, không hiện ở Kế hoạch may nữa
 const isDone = o => !!(o.xuong && o.xuatAnhLuc);
@@ -503,39 +539,33 @@ function vMay(){
       <div class="ch"><div><div class="mono">${esc(o.ma)} · ${esc(o.th)} · CS ${esc(o.cs)}</div><div class="t">${esc(o.ten)}</div></div></div>
       <div class="plan">
         <div class="plan-d"><small>Khách nhận</small><b>${dm(o.ngayKhach)}</b>${khTag(o)}</div>
-        <div class="plan-q"><small>Áo</small><b>${mAo(o)||'—'}</b>${la?`<span class="plan-l">${esc(la)}</span>`:''}</div>
-        <div class="plan-q"><small>Quần</small><b>${mQuan(o)||'—'}</b>${lq?`<span class="plan-l">${esc(lq)}</span>`:''}</div>
+        <div class="plan-q"><small>Áo</small><b>${mAo(o)||'—'}</b>${loaiLines(o,'ao').map(t=>`<span class="plan-l">${esc(t)}</span>`).join('')}</div>
+        <div class="plan-q"><small>Quần</small><b>${mQuan(o)||'—'}</b>${loaiLines(o,'quan').map(t=>`<span class="plan-l">${esc(t)}</span>`).join('')}</div>
       </div>
       ${!o.confirm || o.ctGhiChu || (!la && !lq) ? `<div class="cmp${o.confirm?'':' diff'}">${!la&&!lq?'Chưa có loại áo quần':''}${o.ctGhiChu?(!la&&!lq?' · ':'')+esc(o.ctGhiChu):''}${o.confirm?'':' · CS chưa xác nhận, tạm theo số BP In'}</div>` : ''}
       <div class="seg" role="group" aria-label="Xưởng may">${L['XƯỞNG MAY'].map(x=>`<button type="button" aria-pressed="${v('xuong')===x}" data-set="xuong" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>
-      <div class="g2">
-        <div class="f"><label for="mg_${esc(o.ma)}">Ngày gửi may</label><input type="date" id="mg_${esc(o.ma)}" data-k="ngayGuiMay" value="${esc(v('ngayGuiMay')||'')}"></div>
-        <div class="f"><label for="mt_${esc(o.ma)}">Ngày xưởng trả</label><input type="date" id="mt_${esc(o.ma)}" data-k="ngayTraMay" value="${esc(v('ngayTraMay')||'')}"></div>
-      </div>
+      <div class="f"><label for="mt_${esc(o.ma)}">Ngày cần nhận hàng từ xưởng</label><input type="date" id="mt_${esc(o.ma)}" data-k="ngayTraMay" value="${esc(v('ngayTraMay')||'')}"></div>
       <div class="f"><label for="mn_${esc(o.ma)}">Ghi chú cho xưởng</label><input type="text" id="mn_${esc(o.ma)}" data-k="ghiChuMay" value="${esc(v('ghiChuMay'))}"></div>
       <div class="actions"><button class="btn" type="button" data-save${isDirty(o.ma,'may')?'':' disabled'}>Lưu</button></div>
     </div>`;
   };
   const xuongBlock = x => {
-    const all = planned.filter(o => o.xuong === x);
-    const dates = Array.from(new Set(all.map(o => o.ngayGuiMay || ''))).sort().reverse();
-    const ao = all.reduce((s,o)=>s+mAo(o),0), qu = all.reduce((s,o)=>s+mQuan(o),0);
+    const g = planned.filter(o => o.xuong === x).sort((a,b)=>(a.ngayTraMay||a.ngayKhach||'9').localeCompare(b.ngayTraMay||b.ngayKhach||'9'));
+    const ao = g.reduce((s,o)=>s+mAo(o),0), qu = g.reduce((s,o)=>s+mQuan(o),0);
     return `<section class="xw">
-      <div class="xw-h"><h3>Xưởng ${esc(x)}</h3><span class="hint">${all.length} đơn · ${ao} áo · ${qu} quần chờ gửi</span></div>
-      ${dates.length ? dates.map(ng => { const g = all.filter(o => (o.ngayGuiMay||'') === ng).sort((a,b)=>(a.ngayKhach||'9').localeCompare(b.ngayKhach||'9')); const k = x+'|'+ng;
-        return `<div class="grp"><div class="grp-h"><div><b>Gửi ${ng?dmy(ng):'(chưa có ngày)'}</b> · ${g.length} đơn · ${g.reduce((s,o)=>s+mAo(o),0)} áo · ${g.reduce((s,o)=>s+mQuan(o),0)} quần</div><button class="btn sm" type="button" data-png="${esc(k)}">Xuất ảnh PNG gửi xưởng</button></div>
-        <div class="tbox" style="border:0;border-radius:0"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Loại áo</th><th>Quần</th><th>Loại quần</th><th>Khách nhận</th><th>Xưởng trả</th><th></th></tr></thead><tbody>
-        ${g.map(o=>`<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.ghiChuMay||o.ctGhiChu?`<div class="hint">${esc([o.ctGhiChu,o.ghiChuMay].filter(Boolean).join(' · '))}</div>`:''}</td><td class="num"><b>${mAo(o)}</b></td><td class="wrap">${esc(loaiOf(o,'ao')||'—')}</td><td class="num"><b>${mQuan(o)}</b></td><td class="wrap">${esc(loaiOf(o,'quan')||'—')}</td><td class="num">${dm(o.ngayKhach)}</td><td class="num">${dm(o.ngayTraMay)}</td><td><button class="btn ghost sm" type="button" data-unplan="${esc(o.ma)}">Sửa</button></td></tr>`).join('')}
-        </tbody></table></div></div>`; }).join('') : '<div class="empty">Chưa có đơn nào chờ gửi xưởng này.</div>'}
+      <div class="xw-h"><h3>Xưởng ${esc(x)}</h3><span class="hint">${g.length} đơn · ${ao} áo · ${qu} quần chờ gửi</span>${g.length?`<button class="btn sm" type="button" data-png="${esc(x)}">Xuất ảnh PNG gửi xưởng</button>`:''}</div>
+      ${g.length ? `<div class="tbox"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Loại áo</th><th>Quần</th><th>Loại quần</th><th>Cần nhận hàng</th><th></th></tr></thead><tbody>
+        ${g.map(o=>`<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.ghiChuMay||o.ctGhiChu?`<div class="hint">${esc([o.ctGhiChu,o.ghiChuMay].filter(Boolean).join(' · '))}</div>`:''}</td><td class="num"><b>${mAo(o)}</b></td><td class="wrap">${esc(loaiOf(o,'ao')||'—')}</td><td class="num"><b>${mQuan(o)}</b></td><td class="wrap">${esc(loaiOf(o,'quan')||'—')}</td><td class="num"><b>${dm(o.ngayTraMay)}</b></td><td><button class="btn ghost sm" type="button" data-unplan="${esc(o.ma)}">Sửa</button></td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="empty">Chưa có đơn nào chờ gửi xưởng này.</div>'}
     </section>`;
   };
   return `
-  <div class="vhead"><h2>Kế hoạch may</h2><p class="lede">Đơn đã ép, xếp theo <b>ngày khách nhận</b> gần nhất trước. Chọn xưởng, ngày gửi, ngày xưởng trả rồi Lưu. Đơn đã xếp nằm ở khối của từng xưởng, chia theo ngày gửi. Bấm <b>Xuất ảnh PNG gửi xưởng</b> để lấy ảnh gửi qua Zalo; xuất xong danh sách đó được ẩn và chuyển sang Đơn hoàn thành.</p></div>
+  <div class="vhead"><h2>Kế hoạch may</h2><p class="lede">Đơn đã ép, xếp theo <b>ngày khách nhận</b> gần nhất trước. Chọn xưởng và ngày cần nhận hàng rồi Lưu; ngày gửi tự lấy là hôm nay. Đơn đã xếp nằm ở bảng của từng xưởng. Bấm <b>Xuất ảnh PNG gửi xưởng</b> để lấy ảnh gửi qua Zalo; xuất xong danh sách đó được ẩn và chuyển sang Đơn hoàn thành.</p></div>
   <div class="bar"><div class="grow"><input type="search" id="mq" placeholder="Tìm mã hoặc tên đơn" value="${esc(F.mayQ)}" aria-label="Tìm đơn"></div></div>
   <div class="sec"><h3>Chờ xếp xưởng <span class="badge${wait.length?' hot':''}">${wait.length}</span></h3>${wait.length?`<div class="cards">${wait.map(card).join('')}</div>`:'<div class="empty">Không có đơn nào chờ xếp xưởng.</div>'}</div>
   <div class="xws">${L['XƯỞNG MAY'].map(xuongBlock).join('')}</div>
   ${lastSent.length ? `<details class="sec"><summary>Đã xuất ảnh hôm nay (${lastSent.length} đơn) · bấm Hiện lại nếu cần xuất lại</summary>
-    <div class="tbox" style="margin-top:8px"><table><thead><tr><th>Xưởng</th><th>Gửi</th><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Quần</th><th></th></tr></thead><tbody>
+    <div class="tbox" style="margin-top:8px"><table><thead><tr><th>Xưởng</th><th>Ngày gửi</th><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Quần</th><th></th></tr></thead><tbody>
     ${lastSent.map(o=>`<tr><td>${esc(o.xuong)}</td><td class="num">${dm(o.ngayGuiMay)}</td><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td class="num">${mAo(o)}</td><td class="num">${mQuan(o)}</td><td><button class="btn ghost sm" type="button" data-unsent="${esc(o.ma)}">Hiện lại</button></td></tr>`).join('')}
     </tbody></table></div></details>` : ''}`;
 }
@@ -547,7 +577,7 @@ function planImage(x, ng, g){
     {h:'STT', w:60, a:'c', f:(o,i)=>String(i+1)}, {h:'Mã', w:140, f:o=>o.ma}, {h:'Tên đơn', w:400, f:o=>o.ten + (o.ctGhiChu||o.ghiChuMay ? '\n' + [o.ctGhiChu,o.ghiChuMay].filter(Boolean).join(' · ') : '')},
     {h:'Áo', w:80, a:'r', f:o=>String(mAo(o)), b:1}, {h:'Loại áo', w:280, f:o=>loaiOf(o,'ao')||'—'},
     {h:'Quần', w:80, a:'r', f:o=>String(mQuan(o)), b:1}, {h:'Loại quần', w:300, f:o=>loaiOf(o,'quan')||'—'},
-    {h:'Khách nhận', w:140, a:'c', f:o=>dmy(o.ngayKhach), b:1}, {h:'Xưởng trả', w:140, a:'c', f:o=>dmy(o.ngayTraMay)}];
+    {h:'Cần nhận hàng', w:280, a:'c', f:o=>dmy(o.ngayTraMay)||'—', b:1}];
   const c = document.createElement('canvas'), ctx = c.getContext('2d');
   const wrap = (t, w, f) => { ctx.font = f; const out = []; String(t).split('\n').forEach(par => { let line = ''; par.split(' ').forEach(word => { const tst = line ? line + ' ' + word : word; if (ctx.measureText(tst).width > w && line) { out.push(line); line = word; } else line = tst; }); out.push(line); }); return out; };
   const LH = 26, rows = g.map((o,i) => { const cells = cols.map(col => wrap(col.f(o,i), col.w - 20, font(col.b?700:500, 19))); return {cells, h: Math.max(...cells.map(l => l.length)) * LH + 20}; });
@@ -573,12 +603,12 @@ function planImage(x, ng, g){
   ctx.font = font(800, 20); ctx.fillStyle = '#1c2220'; ctx.fillText(`TỔNG: ${ao} áo · ${qu} quần`, pad, y + 44);
   return c;
 }
-async function exportPng(k){
-  const [x, ng] = k.split('|');
-  const g = D.orders.filter(o => o.xuong === x && (o.ngayGuiMay||'') === ng && !o.xuatAnhLuc).sort((a,b)=>(a.ngayKhach||'9').localeCompare(b.ngayKhach||'9'));
+async function exportPng(x){
+  const g = D.orders.filter(o => o.xuong === x && !o.xuatAnhLuc).sort((a,b)=>(a.ngayTraMay||a.ngayKhach||'9').localeCompare(b.ngayTraMay||b.ngayKhach||'9'));
+  const ng = D.today;
   if (!g.length) return;
   try { await document.fonts.ready; } catch (e) {}
-  const cv = planImage(x, ng, g), url = cv.toDataURL('image/png'), name = `KH_MAY_${x.replace(/\s+/g,'_')}_${(ng||'').replace(/-/g,'')}.png`;
+  const cv = planImage(x, ng, g), url = cv.toDataURL('image/png'), name = `KH_MAY_${x.replace(/\s+/g,'_')}_${ng.replace(/-/g,'')}.png`;
   const m = document.createElement('div'); m.className = 'modal';
   m.innerHTML = `<div class="modal-in modal-img" role="dialog" aria-label="Ảnh gửi xưởng ${esc(x)}">
     <b>Ảnh gửi xưởng ${esc(x)} · ${g.length} đơn</b>
@@ -731,14 +761,14 @@ function bind(){
   main.querySelectorAll('[data-reedit]').forEach(b => b.onclick = () => { EDIT_IN[b.dataset.reedit] = true; window.scrollTo(0,0); render(); });
   main.querySelectorAll('[data-unedit]').forEach(b => b.onclick = () => { delete EDIT_IN[b.dataset.unedit]; delete DRAFT[b.dataset.unedit+'|in']; render(); });
   main.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => moveInRoll(b.dataset.ma, +b.dataset.mv));
-  main.querySelectorAll('[data-ep1]').forEach(cb => cb.onchange = () => { if (cb.checked) bulk([cb.dataset.ep1], 'in', {chuyenEp:true}, 'Đã chuyển sang BP Ép'); });
-  main.querySelectorAll('[data-epall]').forEach(b => b.onclick = () => { const g = rollGroups(D.orders.filter(o => o.tienDo==='Đã in' && !o.chuyenEp)).find(x => x.key === b.dataset.epall); if (g) bulk(g.items.map(o=>o.ma), 'in', {chuyenEp:true}, `Đã chuyển ${g.items.length} đơn của cuộn ${g.cuon} sang BP Ép`); });
+  main.querySelectorAll('[data-ep1]').forEach(cb => cb.onchange = () => { if (cb.checked) bulk([cb.dataset.ep1], 'in', {chuyenEp:true, lyDoTraVe:''}, 'Đã chuyển sang BP Ép'); });
+  main.querySelectorAll('[data-epall]').forEach(b => b.onclick = () => { const g = rollGroups(D.orders.filter(o => o.tienDo==='Đã in' && !o.chuyenEp)).find(x => x.key === b.dataset.epall); if (g) bulk(g.items.map(o=>o.ma), 'in', {chuyenEp:true, lyDoTraVe:''}, `Đã chuyển ${g.items.length} đơn của cuộn ${g.cuon} sang BP Ép`); });
   // BP Ép
   main.querySelectorAll('[data-epf]').forEach(el => el.onchange = () => { const k = el.dataset.key; EPF[k] = EPF[k] || {epLe:'CUỘN', ngay:D.today}; EPF[k][el.dataset.epf] = el.value; });
   const epPatch = k => { const e = EPF[k] || {epLe:'CUỘN', ngay:D.today}; return {tienDo:'Đã ép', epLe:e.epLe, ngayDaEp:e.ngay || D.today}; };
   main.querySelectorAll('[data-epdone]').forEach(b => b.onclick = () => bulk([b.dataset.epdone], 'ep', epPatch(b.dataset.key), 'Đã ép, đơn chuyển sang Kế hoạch may'));
   main.querySelectorAll('[data-epdoneall]').forEach(b => b.onclick = () => { const g = rollGroups(D.orders.filter(o => o.tienDo==='Đã in' && o.chuyenEp)).find(x => x.key === b.dataset.epdoneall); if (g) bulk(g.items.map(o=>o.ma), 'ep', epPatch(g.key), `Đã ép ${g.items.length} đơn, chuyển sang Kế hoạch may`); });
-  main.querySelectorAll('[data-epback]').forEach(b => b.onclick = () => bulk([b.dataset.epback], 'in', {chuyenEp:false}, 'Đã trả đơn về BP In'));
+  main.querySelectorAll('[data-epback]').forEach(b => b.onclick = () => askReturn(b.dataset.epback));
   main.querySelectorAll('[data-epundo]').forEach(b => b.onclick = () => bulk([b.dataset.epundo], 'ep', {tienDo:'Đã in'}, 'Đã hoàn tác, đơn quay lại Chờ ép'));
   on('mq','input', e => { F.mayQ = e.target.value; rerenderKeep('mq'); });
   on('htq','input', e => { F.htQ = e.target.value; rerenderKeep('htq'); });
@@ -782,9 +812,8 @@ function bind(){
     }));
     c.querySelectorAll('[data-set]').forEach(b => b.onclick = () => {
       draft(ma, sec)[b.dataset.set] = b.dataset.v;
-      if (sec === 'may' && !val(o,'may','ngayGuiMay')) draft(ma,'may').ngayGuiMay = D.today;
+      if (sec === 'may') draft(ma,'may').ngayGuiMay = D.today; // ngày gửi = ngày làm kế hoạch
       b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
-      const dg = c.querySelector('[data-k="ngayGuiMay"]'); if (dg && !dg.value) dg.value = D.today;
       if (sec === 'in') {
         const di = c.querySelector('[data-k="ngayDaIn"]'), de = c.querySelector('[data-k="ngayDaEp"]');
         if ((b.dataset.v === 'Đã in' || b.dataset.v === 'Đã ép') && di && !di.value) { di.value = D.today; draft(ma,'in').ngayDaIn = D.today; }
@@ -808,6 +837,23 @@ function bind(){
     }
     const sv = c.querySelector('[data-save]'); if (sv) sv.onclick = () => saveCard(ma, sec);
   });
+}
+// BP Ép trả đơn về BP In: bắt buộc ghi lý do, BP In thấy ở đầu màn hình và ở chuông thông báo
+function askReturn(ma){
+  const o = byKey(ma); if (!o) return;
+  const R = ['In lỗi màu / lem', 'Thiếu áo hoặc quần', 'Sai tên / số', 'Sai vải', 'Sai thứ tự cuộn'];
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<form class="modal-in" role="dialog" aria-label="Trả đơn về BP In">
+    <b>Trả đơn ${esc(o.ma)} về BP In</b><span class="hint">${esc(o.ten)} · cuộn ${esc(o.cuon||'—')} · in bởi ${esc(o.nguoiIn||'—')}</span>
+    <div class="chips">${R.map(r=>`<button type="button" class="btn ghost sm" data-r="${esc(r)}">${esc(r)}</button>`).join('')}</div>
+    <div class="f"><label for="rtWhy">Lý do (BP In sẽ thấy)</label><textarea id="rtWhy" rows="2" placeholder="Ví dụ: 3 áo số 12 bị lem, in lại"></textarea></div>
+    <div class="actions"><button class="btn" type="submit">Trả về BP In</button><button class="btn ghost" type="button" data-cl>Hủy</button></div></form>`;
+  document.body.appendChild(m);
+  const ta = m.querySelector('#rtWhy'); ta.focus();
+  m.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { ta.value = ta.value ? ta.value + '; ' + b.dataset.r : b.dataset.r; ta.focus(); });
+  m.querySelector('[data-cl]').onclick = () => m.remove();
+  m.querySelector('form').onsubmit = ev => { ev.preventDefault(); const why = ta.value.trim(); if (!why) { toast('Ghi lý do để BP In biết cần sửa gì', true); return; } m.remove();
+    bulk([ma], 'ep', {chuyenEp:false, lyDoTraVe:why, traVeLuc:D.today+' '+new Date().toTimeString().slice(0,5)}, 'Đã trả đơn về BP In kèm lý do'); };
 }
 async function bulk(mas, sec, patch, okMsg){
   try {
