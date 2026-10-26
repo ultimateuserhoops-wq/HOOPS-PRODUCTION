@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tiến độ In – Ép</title>
+<meta name="description" content="Theo dõi đơn từ CS → BP In → BP Ép → CS xác nhận → Kế hoạch may · HOOPS & AKU">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f6b5c'/%3E%3Cpath d='M8 22V10h4.5a4 4 0 010 8H8m10 4V10h6' stroke='%23fff' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="top gut">
+  <div class="top-in">
+    <div class="row1">
+      <div class="brand">Tiến độ In – Ép<small>HOOPS &amp; AKU · Nhập đơn → In → Ép → CS xác nhận → May</small></div>
+      <div class="who" id="whoBox" hidden><span id="meName"></span><button class="btn ghost sm" id="logoutBtn" type="button">Đăng xuất</button></div>
+      <div class="sync"><span id="syncTxt">Đang tải…</span><button class="btn ghost sm" id="reload" type="button">Tải lại</button></div>
+    </div>
+    <nav class="nav" id="nav" role="tablist" aria-label="Màn hình"></nav>
+  </div>
+</div>
+<main class="gut" id="main"><div class="empty">Đang tải dữ liệu…</div></main>
+<div id="toast" class="toast" hidden></div>
+<div id="drawer" class="drawer" hidden></div>
+<script src="assets/config.js"></script>
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
