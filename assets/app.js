@@ -181,6 +181,10 @@ function notifs(){
   const mineCs = o => has('QUẢN LÝ') || o.cs === ME;
   if (has('BP IN')) D.orders.filter(o => o.lyDoTraVe && !o.chuyenEp && o.tienDo === 'Đã in').forEach(o =>
     out.push({id:'tv|'+o.ma+'|'+o.traVeLuc, at:o.traVeLuc, hot:true, ma:o.ma, go:'bpin', t:`BP Ép trả về ${o.ma} · ${o.ten}`, d:'Lý do: ' + o.lyDoTraVe}));
+  if (has('BP IN')) D.orders.filter(o => isLech(o) && !lechChecked(o)).forEach(o =>
+    out.push({id:'lech|'+o.ma+'|'+o.csCapNhat, at:o.csCapNhat||D.today, hot:true, go:'bpin', t:`Lệch số lượng ${o.ma} với CS ${o.cs}, kiểm lại`, d:lechOf(o).join(' · ')}));
+  if (has('CS')) D.orders.filter(o => mineCs(o) && isLech(o)).forEach(o =>
+    out.push({id:'lechcs|'+o.ma+'|'+(lechChecked(o)?o.lechKiemLuc:o.csCapNhat), at:(lechChecked(o)?o.lechKiemLuc:o.csCapNhat)||D.today, hot:true, go:'cuatoi', t:`Lệch số lượng ${o.ma} với BP In`, d:lechOf(o).join(' · ') + (lechChecked(o) ? ' · BP In đã kiểm: số BP In đúng, CS sửa lại' : ' · đang chờ BP In kiểm lại')}));
   if (has('CS')) D.orders.filter(o => mineCs(o) && o.tienDo === 'Đã ép' && recent(o.ngayDaEp) && !o.xuatAnhLuc).forEach(o =>
     out.push({id:'ep|'+o.ma, at:o.ngayDaEp, ma:o.ma, go:o.confirm?'':'cuatoi', t:`Đơn ${o.ma} đã ép xong (${dm(o.ngayDaEp)})`, d:o.ten + (o.confirm ? '' : ' · chưa nhập loại áo quần')}));
   if (has('CS')) D.orders.filter(o => mineCs(o) && o.tienDo === 'Đã in' && recent(o.ngayDaIn) && !o.confirm).forEach(o =>
@@ -358,6 +362,7 @@ function vBpIn(){
   const todo = D.orders.filter(o => ((o.tienDo !== 'Đã in' && o.tienDo !== 'Đã ép') || EDIT_IN[o.ma]) && match(o))
     .sort((a,b) => (EDIT_IN[b.ma]?1:0)-(EDIT_IN[a.ma]?1:0) || pLevel(a.uuTien)-pLevel(b.uuTien) || (a.ngayInEp||'9').localeCompare(b.ngayInEp||'9'));
   const backs = D.orders.filter(o => o.lyDoTraVe && !o.chuyenEp && o.tienDo === 'Đã in');
+  const lechs = D.orders.filter(isLech);
   const doneG = rollGroups(D.orders.filter(o => o.tienDo === 'Đã in' && !o.chuyenEp && !EDIT_IN[o.ma] && match(o)));
   const card = o => {
     const v = k => val(o,'in',k), id = k => k + '_' + esc(o.ma);
@@ -407,6 +412,7 @@ function vBpIn(){
   <div class="vhead"><h2>BP In cập nhật tiến độ</h2><p class="lede">Tìm theo mã hoặc tên đơn. Khi in xong, chọn <b>Đã in</b>, ghi máy in, người in, cuộn, số lượng và vải từng phần (thân, bo, phối) rồi bấm Lưu. Đơn sẽ xuống danh sách đã in bên dưới và về danh sách của CS. Sắp lại thứ tự trong cuộn, rồi tick <b>Confirm</b> để chuyển sang BP Ép.</p></div>
   <datalist id="dlCuon">${(L['CUỘN']||[]).map(c=>`<option value="${esc(c)}"></option>`).join('')}</datalist>
   ${backs.length ? `<div class="alert"><b>BP Ép trả về ${backs.length} đơn</b>${backs.map(o=>`<div class="alert-r"><button type="button" class="olink-inline mono" data-open="${esc(o.ma)}">${esc(o.ma)}</button> ${esc(o.ten)} · cuộn ${esc(o.cuon||'—')}<div><b>Lý do:</b> ${esc(o.lyDoTraVe)} <span class="hint">(${esc(dm(o.traVeLuc)+' '+(o.traVeLuc||'').slice(11,16))})</span></div></div>`).join('')}<div class="hint">Sửa xong thì tick lại Confirm chuyển ép ở danh sách đã in bên dưới.</div></div>` : ''}
+  ${lechs.length ? `<div class="alert"><b>Lệch số lượng với CS · ${lechs.length} đơn, cần đếm lại</b>${lechs.map(o=>`<div class="alert-r"><button type="button" class="olink-inline mono" data-open="${esc(o.ma)}">${esc(o.ma)}</button> ${esc(o.ten)} · CS ${esc(o.cs)} · cuộn ${esc(o.cuon||'—')}<div><b>${esc(lechOf(o).join(' · '))}</b>${lechChecked(o)?' <span class="hint">· đã báo CS: số BP In đúng</span>':''}</div><div class="actions" style="margin-top:6px"><button class="btn sm" type="button" data-reedit="${esc(o.ma)}">Sửa số BP In</button>${lechChecked(o)?'':`<button class="btn ghost sm" type="button" data-lechok="${esc(o.ma)}">Số BP In đúng, báo CS sửa</button>`}</div></div>`).join('')}</div>` : ''}
   <div class="bar"><div class="grow"><input type="search" id="bpq" placeholder="Nhập mã (ví dụ H2610-237) hoặc tên đơn" value="${esc(F.bpq)}" aria-label="Tìm đơn"></div></div>
   <div class="sec"><h3>Cần in <span class="badge">${todo.length}</span></h3>${todo.length ? `<div class="cards">${todo.map(card).join('')}</div>` : '<div class="empty">Không còn đơn nào cần in. Đơn mới CS nhập sẽ hiện ở đây.</div>'}</div>
   <div class="sec"><h3>Đã in, chờ chuyển ép <span class="badge${doneG.length?' hot':''}">${doneG.reduce((s,g)=>s+g.items.length,0)}</span></h3>
@@ -480,6 +486,7 @@ function vCuaToi(){
       <div class="ch"><div><div class="mono">${esc(o.ma)} · ${esc(o.th)}</div><div class="t">${esc(o.ten)}</div></div>${oChip(o)}</div>
       <div class="meta"><span>Khách nhận <b>${dm(o.ngayKhach)}</b></span><span>Người in <b>${esc(o.nguoiIn||'—')}</b></span>${o.xuong?`<span>Xưởng <b>${esc(o.xuong)}</b></span>`:''}</div>
       <div class="cmp${df?' diff':''}">${inTxt}${df?' · số CS nhập đang khác số BP In':''}</div>
+      ${isLech(o) ? `<div class="alert" style="padding:8px 12px"><b>Lệch số lượng, chưa CONFIRM được</b><span>${esc(lechOf(o).join(' · '))}</span><span>${lechChecked(o) ? 'BP In đã đếm lại: <b>số BP In đúng</b>. CS kiểm lại loại áo quần và sửa số.' : 'Đã báo BP In đếm lại. Nếu BP In sửa số khớp, cảnh báo tự hết.'}</span></div>` : ''}
       ${loaiBlock(o, 'ao', v)}
       ${loaiBlock(o, 'quan', v)}
       <div class="f"><label for="cg_${esc(o.ma)}">Ghi chú thêm cho xưởng may</label><input type="text" id="cg_${esc(o.ma)}" data-k="ctGhiChu" value="${esc(v('ctGhiChu'))}" placeholder="Ví dụ: in tên sau lưng, cổ tim"></div>
@@ -490,6 +497,7 @@ function vCuaToi(){
   <div class="vhead"><h2>Danh sách của CS</h2><p class="lede">Đơn tự về đây khi BP In chuyển sang "${esc(D.pushAt)}". Chọn từng loại áo, loại quần và số lượng (web tự cộng tổng), rồi tick CONFIRM. Đơn đã CONFIRM chuyển sang màn hình Kế hoạch may.</p></div>
   ${justEp.length ? `<div class="okbox"><b>${justEp.length} đơn của ${has('QUẢN LÝ')?esc(cs):'bạn'} đã ép xong trong 2 ngày qua</b><div class="okbox-l">${justEp.map(o=>`<span><button type="button" class="olink-inline mono" data-open="${esc(o.ma)}">${esc(o.ma)}</button> ${esc(o.ten)} · ép ${dm(o.ngayDaEp)}${o.confirm?' · đã CONFIRM':' · <b>chưa nhập loại áo quần</b>'}</span>`).join('')}</div></div>` : ''}
   ${has('QUẢN LÝ') || L['CS'].indexOf(ME) < 0 ? `<div class="bar"><span class="lb" style="font-weight:700">CS:</span><div class="seg" role="group" aria-label="Chọn CS">${L['CS'].map(c=>`<button type="button" aria-pressed="${c===cs}" data-mycs="${esc(c)}">${esc(c)}</button>`).join('')}</div></div>` : ''}
+  ${mine.filter(isLech).length ? `<div class="alert"><b>${mine.filter(isLech).length} đơn lệch số lượng với BP In</b><span>Hai bên cùng đếm lại. Đơn lệch không CONFIRM được cho đến khi số khớp.</span></div>` : ''}
   <div class="sec"><h3>Cần nhập số lượng <span class="badge${todo.length?' hot':''}">${todo.length}</span></h3>${todo.length?`<div class="cards">${todo.map(card).join('')}</div>`:'<div class="empty">Chưa có đơn nào in xong đang chờ bạn nhập số lượng.</div>'}</div>
   <div class="sec"><h3>Đã CONFIRM, chờ xếp xưởng <span class="badge">${done.length}</span></h3>${done.length?`<div class="cards">${done.map(card).join('')}</div>`:'<div class="empty">Không có.</div>'}</div>
   <div class="sec"><h3>Đã gửi xưởng · bấm hoàn thành khi QC đạt <span class="badge${toFinish.some(o=>o.qcKetQua==='Đạt')?' hot':''}">${toFinish.length}</span></h3>
@@ -569,6 +577,8 @@ function vXong(){
 const cap1 = t => t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : '';
 // 1 loại: chỉ tên loại ("Áo bạ"); nhiều loại: mỗi dòng "20 Áo bo"
 const loaiLines = (o, kind) => { const r = parseLoai(o.loai)[kind].filter(x => x[0] && +x[1] > 0); return r.length === 1 ? [cap1(r[0][0])] : r.map(x => x[1] + ' ' + cap1(x[0])); };
+// Gộp số lượng + loại: "20 áo thun + 4 midlayer"; chưa có loại thì "16 áo"
+const qtyTxt = (o, kind) => { const l = loaiOf(o, kind), n = kind === 'ao' ? mAo(o) : mQuan(o); return l || (n ? n + (kind === 'ao' ? ' áo' : ' quần') : '—'); };
 const loaiOf = (o, kind) => parseLoai(o.loai)[kind].filter(r => r[0] && +r[1] > 0).map(r => r[1] + ' ' + r[0].toLowerCase()).join(' + ');
 // Đơn đã xuất ảnh gửi xưởng chuyển sang QC, không hiện ở Kế hoạch may nữa
 const isDone = o => !!o.hoanThanhLuc; // CS bấm Đơn đã hoàn thành sau khi QC đạt
@@ -600,8 +610,8 @@ function vMay(){
     const ao = g.reduce((s,o)=>s+mAo(o),0), qu = g.reduce((s,o)=>s+mQuan(o),0);
     return `<section class="xw">
       <div class="xw-h"><h3>Xưởng ${esc(x)}</h3><span class="hint">${g.length} đơn · ${ao} áo · ${qu} quần chờ gửi</span>${g.length?`<button class="btn sm" type="button" data-png="${esc(x)}">Xuất ảnh PNG gửi xưởng</button>`:''}</div>
-      ${g.length ? `<div class="tbox"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Loại áo</th><th>Quần</th><th>Loại quần</th><th>Cần nhận hàng</th><th></th></tr></thead><tbody>
-        ${g.map(o=>`<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.ghiChuMay||o.ctGhiChu?`<div class="hint">${esc([o.ctGhiChu,o.ghiChuMay].filter(Boolean).join(' · '))}</div>`:''}</td><td class="num"><b>${mAo(o)}</b></td><td class="wrap">${esc(loaiOf(o,'ao')||'—')}</td><td class="num"><b>${mQuan(o)}</b></td><td class="wrap">${esc(loaiOf(o,'quan')||'—')}</td><td class="num"><b>${dm(o.ngayTraMay)}</b></td><td><button class="btn ghost sm" type="button" data-unplan="${esc(o.ma)}">Sửa</button></td></tr>`).join('')}
+      ${g.length ? `<div class="tbox"><table><thead><tr><th>Mã</th><th>Tên đơn</th><th>Áo</th><th>Quần</th><th>Cần nhận hàng</th><th></th></tr></thead><tbody>
+        ${g.map(o=>`<tr><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}${o.ghiChuMay||o.ctGhiChu?`<div class="hint">${esc([o.ctGhiChu,o.ghiChuMay].filter(Boolean).join(' · '))}</div>`:''}</td><td class="wrap"><b>${esc(qtyTxt(o,'ao'))}</b></td><td class="wrap"><b>${esc(qtyTxt(o,'quan'))}</b></td><td class="num"><b>${dm(o.ngayTraMay)}</b></td><td><button class="btn ghost sm" type="button" data-unplan="${esc(o.ma)}">Sửa</button></td></tr>`).join('')}
         </tbody></table></div>` : '<div class="empty">Chưa có đơn nào chờ gửi xưởng này.</div>'}
     </section>`;
   };
@@ -620,9 +630,8 @@ function vMay(){
 function planImage(x, ng, g){
   const css = getComputedStyle(document.documentElement), font = (w, sz) => `${w} ${sz}px "Be Vietnam Pro", system-ui, sans-serif`;
   const W = 1700, pad = 40, cols = [
-    {h:'STT', w:60, a:'c', f:(o,i)=>String(i+1)}, {h:'Mã', w:140, f:o=>o.ma}, {h:'Tên đơn', w:400, f:o=>o.ten + (o.ctGhiChu||o.ghiChuMay ? '\n' + [o.ctGhiChu,o.ghiChuMay].filter(Boolean).join(' · ') : '')},
-    {h:'Áo', w:80, a:'r', f:o=>String(mAo(o)), b:1}, {h:'Loại áo', w:280, f:o=>loaiOf(o,'ao')||'—'},
-    {h:'Quần', w:80, a:'r', f:o=>String(mQuan(o)), b:1}, {h:'Loại quần', w:300, f:o=>loaiOf(o,'quan')||'—'},
+    {h:'STT', w:60, a:'c', f:(o,i)=>String(i+1)}, {h:'Tên đơn', w:440, f:o=>o.ten + (o.ctGhiChu||o.ghiChuMay ? '\n' + [o.ctGhiChu,o.ghiChuMay].filter(Boolean).join(' · ') : '')},
+    {h:'Áo', w:420, f:o=>qtyTxt(o,'ao'), b:1}, {h:'Quần', w:420, f:o=>qtyTxt(o,'quan'), b:1},
     {h:'Cần nhận hàng', w:280, a:'c', f:o=>dmy(o.ngayTraMay)||'—', b:1}];
   const c = document.createElement('canvas'), ctx = c.getContext('2d');
   const wrap = (t, w, f) => { ctx.font = f; const out = []; String(t).split('\n').forEach(par => { let line = ''; par.split(' ').forEach(word => { const tst = line ? line + ' ' + word : word; if (ctx.measureText(tst).width > w && line) { out.push(line); line = word; } else line = tst; }); out.push(line); }); return out; };
@@ -643,7 +652,7 @@ function planImage(x, ng, g){
   y += thH;
   rows.forEach((r, ri) => {
     if (ri % 2) { ctx.fillStyle = '#f6f7f4'; ctx.fillRect(pad, y, W-2*pad, r.h); }
-    r.cells.forEach((lines, i) => { lines.forEach((ln, li) => { ctx.font = font(cols[i].b ? 700 : (i===2 && li===0 ? 700 : 500), 19); ctx.fillStyle = i===2 && li>0 ? '#5d6864' : '#1c2220'; tx(ln, i, y + 34 + li*LH); }); });
+    r.cells.forEach((lines, i) => { lines.forEach((ln, li) => { ctx.font = font(cols[i].b ? 700 : (i===1 && li===0 ? 700 : 500), 19); ctx.fillStyle = i===1 && li>0 ? '#5d6864' : '#1c2220'; tx(ln, i, y + 34 + li*LH); }); });
     y += r.h; ctx.strokeStyle = '#d8dcd6'; ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W-pad, y); ctx.stroke();
   });
   ctx.font = font(800, 20); ctx.fillStyle = '#1c2220'; ctx.fillText(`TỔNG: ${ao} áo · ${qu} quần`, pad, y + 44);
@@ -779,6 +788,13 @@ function khTag(o){
   const c = n < 0 ? 'r-red' : n <= 2 ? 'r-or' : n <= 5 ? 'r-ye' : 'r-no';
   return `<span class="rem ${c}">${n < 0 ? 'trễ '+(-n)+' ngày' : n === 0 ? 'hôm nay' : 'còn '+n+' ngày'}</span>`;
 }
+// Lệch số lượng: số CS đã lưu khác số BP In. Chặn CONFIRM, báo cả BP In và CS kiểm lại
+const lechOf = (o, a = o.slAo, q = o.slQuan) => { const x = [], has = v => v !== '' && v != null;
+  if (has(a) && has(o.slAoIn) && +a !== +o.slAoIn) x.push(`Áo: BP In ${o.slAoIn} · CS ${a}`);
+  if (has(q) && has(o.slQuanIn) && +q !== +o.slQuanIn) x.push(`Quần: BP In ${o.slQuanIn} · CS ${q}`);
+  return x; };
+const isLech = o => !o.xuatAnhLuc && lechOf(o).length > 0;
+const lechChecked = o => !!o.lechKiemLuc && o.lechKiemLuc >= (o.csCapNhat || ''); // BP In đã kiểm lại sau lần CS lưu gần nhất
 const mAo = o => o.confirm && o.slAo !== '' ? N0(o.slAo) : N0(o.slAoIn);
 const mQuan = o => o.confirm && o.slQuan !== '' ? N0(o.slQuan) : N0(o.slQuanIn);
 function groupText(k){
@@ -819,6 +835,7 @@ function bind(){
   on('mq','input', e => { F.mayQ = e.target.value; rerenderKeep('mq'); });
   on('qcq','input', e => { F.qcQ = e.target.value; rerenderKeep('qcq'); });
   const nowTs = () => D.today + ' ' + new Date().toTimeString().slice(0,5);
+  main.querySelectorAll('[data-lechok]').forEach(b => b.onclick = () => bulk([b.dataset.lechok], 'in', {lechKiemLuc:nowTs()}, 'Đã báo CS: số BP In đúng, CS sửa lại'));
   main.querySelectorAll('[data-qcin]').forEach(b => b.onclick = () => bulk([b.dataset.qcin], 'qc', {qcNhanLuc:nowTs()}, 'Đã ghi nhận hàng từ xưởng'));
   main.querySelectorAll('[data-qcok]').forEach(b => b.onclick = () => bulk([b.dataset.qcok], 'qc', {qcKetQua:'Đạt', qcGhiChu:''}, 'QC đạt, đã báo CS phụ trách'));
   main.querySelectorAll('[data-qcbad]').forEach(b => b.onclick = () => askQcBad(b.dataset.qcbad));
@@ -895,12 +912,13 @@ function bind(){
 // BP Ép trả đơn về BP In: bắt buộc ghi lý do, BP In thấy ở đầu màn hình và ở chuông thông báo
 function askReturn(ma){
   const o = byKey(ma); if (!o) return;
-  const R = ['In lỗi màu / lem', 'Thiếu áo hoặc quần', 'Sai tên / số', 'Sai vải', 'Sai thứ tự cuộn'];
+  const R = ['Thiếu đơn (thiếu áo / quần)', 'Lỗi màu sắc'];
   const m = document.createElement('div'); m.className = 'modal';
   m.innerHTML = `<form class="modal-in" role="dialog" aria-label="Trả đơn về BP In">
     <b>Trả đơn ${esc(o.ma)} về BP In</b><span class="hint">${esc(o.ten)} · cuộn ${esc(o.cuon||'—')} · in bởi ${esc(o.nguoiIn||'—')}</span>
     <div class="chips">${R.map(r=>`<button type="button" class="btn ghost sm" data-r="${esc(r)}">${esc(r)}</button>`).join('')}</div>
-    <div class="f"><label for="rtWhy">Lý do (BP In sẽ thấy)</label><textarea id="rtWhy" rows="2" placeholder="Ví dụ: 3 áo số 12 bị lem, in lại"></textarea></div>
+    <div class="f"><label for="rtWhy">Lý do (BP In sẽ thấy)</label><textarea id="rtWhy" rows="2" placeholder="Ví dụ: thiếu 3 áo số 12; áo số 7 lệch màu"></textarea></div>
+    <span class="hint">Cả đơn quay về BP In, chưa ép phần nào. BP In in bổ sung hoặc in lại xong, confirm chuyển ép lại, BP Ép ép toàn bộ đơn 1 lần.</span>
     <div class="actions"><button class="btn" type="submit">Trả về BP In</button><button class="btn ghost" type="button" data-cl>Hủy</button></div></form>`;
   document.body.appendChild(m);
   const ta = m.querySelector('#rtWhy'); ta.focus();
@@ -965,10 +983,13 @@ async function saveCard(ma, sec){
   if (!d) return;
   const c = document.querySelector(`.card[data-ma="${CSS.escape(ma)}"][data-sec="${sec}"] [data-save]`);
   if (c) { c.disabled = true; c.textContent = 'Đang lưu…'; }
+  let blocked = false;
+  if (sec === 'cs' && (d.confirm ?? o.confirm) && lechOf(o, d.slAo ?? o.slAo, d.slQuan ?? o.slQuan).length) { d.confirm = false; blocked = true; }
   try {
     const r = await api('updateOrder', ma, sec, d);
     Object.assign(o, r); delete DRAFT[ma+'|'+sec];
-    if (sec === 'in' && o.tienDo === 'Đã in') delete EDIT_IN[ma];
+    if (sec === 'in' && (o.tienDo === 'Đã in' || o.tienDo === 'Đã ép')) delete EDIT_IN[ma];
+    if (blocked) { toast('Số CS khác số BP In nên chưa CONFIRM. Đã báo BP In đếm lại.', true); render(); return; }
     const msg = sec==='in' && o.tienDo==='Đã in' ? `Đã lưu. Đơn xuống danh sách đã in (cuộn ${o.cuon}, STT ${o.sttCuon}) và về danh sách của CS ${o.cs}.` : sec==='cs' && o.confirm ? 'Đã CONFIRM, đơn chuyển sang Kế hoạch may.' : 'Đã lưu ' + ma;
     toast(msg); render();
   } catch (err) { if (errMsg(err) === '__auth__') return; toast(errMsg(err), true); render(); }

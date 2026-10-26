@@ -70,10 +70,12 @@ const MOCK = (() => {
   Object.assign(orders.find(o => o.ma === 'H2610-170'), {qcNhanLuc:'2026-10-19 09:00', qcKetQua:'Đạt', qcLuc:'2026-10-20 10:00'});
   // 1 đơn BP Ép vừa trả về BP In
   Object.assign(orders.find(o => o.ma === 'H2610-253'), {lyDoTraVe:'3 áo số 12 bị lem màu, in lại', traVeLuc:'2026-10-20 10:15'});
+  // 1 đơn CS đã lưu số khác BP In (lệch số lượng)
+  (o => { if (o) { const n = Math.max(0, (+o.slAoIn||0) - 2); Object.assign(o, {slAo:n, slQuan:o.slQuanIn, loai:JSON.stringify({ao:[['ÁO BO',n]],quan:[]}), csCapNhat:'2026-10-20 11:40'}); } })(orders.find(o => o.tienDo === 'Đã in' && !o.confirm && o.cs === 'TRINH' && o.slAoIn !== ''));
   // Máy in mẫu theo người in; vài đơn có vải phối khác vải bo
   orders.forEach(o => { if (o.nguoiIn && o.tienDo !== 'Chờ in') o.mayIn = o.nguoiIn === 'VĂN TÀI' ? 'MÁY CŨ' : 'MÁY MỚI'; });
   [['H2610-246',8,'ELITE'],['H2610-237',4,'2 DA CỨNG'],['H2610-171',6,'Z2']].forEach(([ma,n,v]) => { const o = orders.find(x => x.ma === ma); o.slPhoi = n; o.vaiPhoi = v; });
-  const SEC = {don:['ten','cs','uuTien','ngayFinal','ngayInEp','ngayKhach','ghiChuCS'], in:['tienDo','mayIn','nguoiIn','cuon','slAoIn','slQuanIn','vai','slBo','slPhoi','vaiBo','vaiPhoi','ghiChuIn','ngayDaIn','chuyenEp','lyDoTraVe'], ep:['tienDo','epLe','ngayDaEp','chuyenEp','lyDoTraVe','traVeLuc'], cs:['slAo','slQuan','chiTiet','confirm','loai','ctGhiChu'], may:['xuong','ngayGuiMay','ngayTraMay','ghiChuMay','xuatAnhLuc'], qc:['qcNhanLuc','qcKetQua','qcGhiChu'], xong:['hoanThanhLuc']};
+  const SEC = {don:['ten','cs','uuTien','ngayFinal','ngayInEp','ngayKhach','ghiChuCS'], in:['tienDo','mayIn','nguoiIn','cuon','slAoIn','slQuanIn','vai','slBo','slPhoi','vaiBo','vaiPhoi','ghiChuIn','ngayDaIn','chuyenEp','lyDoTraVe','lechKiemLuc'], ep:['tienDo','epLe','ngayDaEp','chuyenEp','lyDoTraVe','traVeLuc'], cs:['slAo','slQuan','chiTiet','confirm','loai','ctGhiChu'], may:['xuong','ngayGuiMay','ngayTraMay','ghiChuMay','xuatAnhLuc'], qc:['qcNhanLuc','qcKetQua','qcGhiChu'], xong:['hoanThanhLuc']};
   const STAMP = {in:'inCapNhat', ep:'epCapNhat', cs:'csCapNhat', may:'mayCapNhat', qc:'qcLuc'};
   const NUMK = ['slAoIn','slQuanIn','slAo','slQuan','slBo','slPhoi'];
   const now = () => '2026-10-20 ' + new Date().toTimeString().slice(0,5);

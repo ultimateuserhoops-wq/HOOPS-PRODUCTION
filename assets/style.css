@@ -224,3 +224,4 @@ td.wrap{white-space:normal;min-width:150px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .plan-l+.plan-l{margin-top:-1px}
 .sub-h{font-weight:800;font-size:13.5px;margin-top:4px}
+.modal-in textarea{flex:none;height:76px;min-height:0;font-family:inherit}
