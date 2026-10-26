@@ -406,6 +406,24 @@ function vBpEp(){
 }
 
 /* ---------- 4. Của tôi (CS) ---------- */
+// Loại áo / quần do CS chọn: lưu dạng JSON {"ao":[["ÁO BO",4]],"quan":[["QUẦN LƯNG THƯỜNG",9]]} ở cột LOẠI ÁO QUẦN.
+// SL áo, SL quần và CHI TIẾT MAY được tính lại từ đây nên CS không phải gõ tay.
+const LOAI_LIST = {ao:'LOẠI ÁO', quan:'LOẠI QUẦN'};
+function parseLoai(s){ try { const j = JSON.parse(s || '{}'); return {ao: j.ao || [], quan: j.quan || []}; } catch (e) { return {ao:[], quan:[]}; } }
+function loaiText(l){
+  const part = a => a.filter(r => r[0] && +r[1] > 0).map(r => r[1] + ' ' + r[0].toLowerCase()).join(' + ');
+  return [part(l.ao), part(l.quan)].filter(Boolean).join(' · ');
+}
+function loaiBlock(o, kind, v){
+  const l = parseLoai(v('loai')), rows = l[kind].length ? l[kind] : [['','']];
+  const list = D.lists[LOAI_LIST[kind]] || [], name = kind === 'ao' ? 'áo' : 'quần';
+  const tot = rows.reduce((s,r)=>s+(+r[1]||0),0), inN = kind === 'ao' ? o.slAoIn : o.slQuanIn;
+  return `<div class="lt" data-kind="${kind}">
+    <div class="lt-h"><span class="lb">Loại ${name}</span><span class="lb">SL</span></div>
+    ${rows.map((r,i)=>`<div class="lt-r" data-i="${i}"><select data-lt="t" aria-label="Loại ${name} dòng ${i+1}">${opts(list.indexOf(r[0])>=0||!r[0]?list:list.concat([r[0]]), r[0], '— chọn loại '+name+' —')}</select><input type="number" min="0" inputmode="numeric" data-lt="n" value="${esc(r[1])}" aria-label="SL ${name} dòng ${i+1}"><button type="button" class="btn ghost sm" data-lt="x" aria-label="Xóa dòng"${rows.length===1&&!r[0]&&!r[1]?' disabled':''}>✕</button></div>`).join('')}
+    <div class="lt-f"><button type="button" class="btn ghost sm" data-lt="add">+ Thêm loại ${name}</button><span>Tổng ${name}: <b class="lt-tot">${tot}</b>${inN!==''?` <span class="hint">(BP In: ${inN})</span>`:''}</span></div>
+  </div>`;
+}
 function vCuaToi(){
   const L = D.lists, cs = F.myCs;
   const mine = D.orders.filter(o => o.cs === cs);
@@ -420,16 +438,14 @@ function vCuaToi(){
       <div class="ch"><div><div class="mono">${esc(o.ma)} · ${esc(o.th)}</div><div class="t">${esc(o.ten)}</div></div>${oChip(o)}</div>
       <div class="meta"><span>Khách nhận <b>${dm(o.ngayKhach)}</b></span><span>Người in <b>${esc(o.nguoiIn||'—')}</b></span>${o.xuong?`<span>Xưởng <b>${esc(o.xuong)}</b></span>`:''}</div>
       <div class="cmp${df?' diff':''}">${inTxt}${df?' · số CS nhập đang khác số BP In':''}</div>
-      <div class="g2">
-        <div class="f"><label for="ca_${esc(o.ma)}">SL áo</label><input type="number" min="0" inputmode="numeric" id="ca_${esc(o.ma)}" data-k="slAo" value="${esc(v('slAo'))}"></div>
-        <div class="f"><label for="cq_${esc(o.ma)}">SL quần</label><input type="number" min="0" inputmode="numeric" id="cq_${esc(o.ma)}" data-k="slQuan" value="${esc(v('slQuan'))}"></div>
-      </div>
-      <div class="f"><label for="ct_${esc(o.ma)}">Chi tiết cho xưởng may</label><textarea id="ct_${esc(o.ma)}" data-k="chiTiet" rows="2" placeholder="Ví dụ: 4 áo bo + 5 áo thun · 9 quần lưng thường">${esc(v('chiTiet'))}</textarea></div>
+      ${loaiBlock(o, 'ao', v)}
+      ${loaiBlock(o, 'quan', v)}
+      <div class="f"><label for="cg_${esc(o.ma)}">Ghi chú thêm cho xưởng may</label><input type="text" id="cg_${esc(o.ma)}" data-k="ctGhiChu" value="${esc(v('ctGhiChu'))}" placeholder="Ví dụ: in tên sau lưng, cổ tim"></div>
       <div class="actions"><label class="chk"><input type="checkbox" data-k="confirm"${v('confirm')?' checked':''}> CONFIRM, chuyển cho kế hoạch may</label><button class="btn" type="button" data-save${isDirty(o.ma,'cs')?'':' disabled'}>Lưu</button></div>
     </div>`;
   };
   return `
-  <div class="vhead"><h2>Danh sách của CS</h2><p class="lede">Đơn tự về đây khi BP In chuyển sang "${esc(D.pushAt)}". Nhập số lượng, chi tiết may rồi tick CONFIRM. Đơn đã CONFIRM chuyển sang màn hình Kế hoạch may.</p></div>
+  <div class="vhead"><h2>Danh sách của CS</h2><p class="lede">Đơn tự về đây khi BP In chuyển sang "${esc(D.pushAt)}". Chọn từng loại áo, loại quần và số lượng (web tự cộng tổng), rồi tick CONFIRM. Đơn đã CONFIRM chuyển sang màn hình Kế hoạch may.</p></div>
   ${has('QUẢN LÝ') || L['CS'].indexOf(ME) < 0 ? `<div class="bar"><span class="lb" style="font-weight:700">CS:</span><div class="seg" role="group" aria-label="Chọn CS">${L['CS'].map(c=>`<button type="button" aria-pressed="${c===cs}" data-mycs="${esc(c)}">${esc(c)}</button>`).join('')}</div></div>` : ''}
   <div class="sec"><h3>Cần nhập số lượng <span class="badge${todo.length?' hot':''}">${todo.length}</span></h3>${todo.length?`<div class="cards">${todo.map(card).join('')}</div>`:'<div class="empty">Chưa có đơn nào in xong đang chờ bạn nhập số lượng.</div>'}</div>
   <div class="sec"><h3>Đã CONFIRM, chờ xếp xưởng <span class="badge">${done.length}</span></h3>${done.length?`<div class="cards">${done.map(card).join('')}</div>`:'<div class="empty">Không có.</div>'}</div>
@@ -489,7 +505,7 @@ function vMay(){
         <div class="plan-q"><small>Áo</small><b>${mAo(o)||'—'}</b></div>
         <div class="plan-q"><small>Quần</small><b>${mQuan(o)||'—'}</b></div>
       </div>
-      <div class="cmp${o.confirm?'':' diff'}">${o.chiTiet?`<b>${esc(o.chiTiet)}</b>`:'<span>Chưa có loại áo quần</span>'}${o.confirm?'':' · CS chưa xác nhận, tạm theo số BP In'}</div>
+      <div class="cmp${o.confirm?'':' diff'}">${o.chiTiet?`<b>${esc(o.chiTiet)}</b>`:'<span>Chưa có loại áo quần</span>'}${o.ctGhiChu?' · '+esc(o.ctGhiChu):''}${o.confirm?'':' · CS chưa xác nhận, tạm theo số BP In'}</div>
       <div class="seg" role="group" aria-label="Xưởng may">${L['XƯỞNG MAY'].map(x=>`<button type="button" aria-pressed="${v('xuong')===x}" data-set="xuong" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>
       <div class="g2">
         <div class="f"><label for="mg_${esc(o.ma)}">Ngày gửi may</label><input type="date" id="mg_${esc(o.ma)}" data-k="ngayGuiMay" value="${esc(v('ngayGuiMay')||'')}"></div>
@@ -712,6 +728,20 @@ function bind(){
       }
       mark();
     });
+    if (sec === 'cs') {
+      const readLoai = () => { const l = {ao:[], quan:[]}; c.querySelectorAll('.lt').forEach(b => b.querySelectorAll('.lt-r').forEach(r => { const t = r.querySelector('[data-lt="t"]').value, n = r.querySelector('[data-lt="n"]').value; if (t || n) l[b.dataset.kind].push([t, n]); })); return l; };
+      const putLoai = l => {
+        const d = draft(ma,'cs'), sum = a => a.reduce((s,r)=>s+(+r[1]||0),0);
+        d.loai = JSON.stringify(l); d.slAo = l.ao.length ? sum(l.ao) : ''; d.slQuan = l.quan.length ? sum(l.quan) : ''; d.chiTiet = loaiText(l);
+        c.querySelectorAll('.lt').forEach(b => { b.querySelector('.lt-tot').textContent = sum(l[b.dataset.kind]); });
+        const df = (d.slAo !== '' && o.slAoIn !== '' && +d.slAo !== +o.slAoIn) || (d.slQuan !== '' && o.slQuanIn !== '' && +d.slQuan !== +o.slQuanIn);
+        const cm = c.querySelector('.cmp'); cm.classList.toggle('diff', df); cm.innerHTML = cm.innerHTML.split(' · số CS nhập')[0] + (df ? ' · số CS nhập đang khác số BP In' : '');
+        mark();
+      };
+      c.querySelectorAll('[data-lt="t"],[data-lt="n"]').forEach(el => el.addEventListener(el.tagName==='SELECT' ? 'change' : 'input', () => putLoai(readLoai())));
+      c.querySelectorAll('[data-lt="add"]').forEach(b => b.onclick = () => { const l = readLoai(), k = b.closest('.lt').dataset.kind; if (!l[k].length) l[k].push(['','']); l[k].push(['','']); putLoai(l); render(); });
+      c.querySelectorAll('[data-lt="x"]').forEach(b => b.onclick = () => { const l = readLoai(), k = b.closest('.lt').dataset.kind, i = +b.closest('.lt-r').dataset.i; l[k].splice(i,1); putLoai(l); render(); });
+    }
     const sv = c.querySelector('[data-save]'); if (sv) sv.onclick = () => saveCard(ma, sec);
   });
 }
