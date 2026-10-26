@@ -27,6 +27,7 @@ const has = r => ROLES.indexOf('QUẢN LÝ') >= 0 || ROLES.indexOf(r) >= 0;
 // step: số bước trong quy trình (hiện trên tab); không có step là màn hình xem / báo cáo
 const VIEWS = [
   {id:'quytrinh', name:'Quy trình', role:''},
+  {id:'tk', name:'Sản lượng TK', role:'TK'},
   {id:'nhap', name:'Nhập đơn', role:'CS', step:1},
   {id:'bpin', name:'BP In', role:'BP IN', step:2},
   {id:'bpep', name:'BP Ép', role:['BP ÉP','BP IN'], step:3},
@@ -36,7 +37,6 @@ const VIEWS = [
   {id:'xong', name:'Đơn hoàn thành', role:''},
   {id:'tiendo', name:'Tiến độ', role:''},
   {id:'slin', name:'Sản lượng In', role:'BP IN'},
-  {id:'tk', name:'Sản lượng TK', role:'TK'},
 ];
 const canSee = id => myViews().some(v => v.id === id);
 const myViews = () => VIEWS.filter(v => !v.role || [].concat(v.role).some(has));
