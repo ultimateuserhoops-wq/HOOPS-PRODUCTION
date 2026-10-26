@@ -541,10 +541,10 @@ function vQc(){
   <div class="sec"><h3>Chờ xưởng trả hàng <span class="badge">${waitX.length}</span></h3>${xs(waitX)}</div>
   ${ok.length ? `<details class="sec"><summary>Đã đạt, chờ CS bấm hoàn thành (${ok.length})</summary><div style="margin-top:8px">${tbl(ok, o => `<button class="btn ghost sm" type="button" data-qcundo="${esc(o.ma)}">Hoàn tác</button>`)}</div></details>` : ''}`;
 }
-// Loại lỗi QC quyết định ai nhận tin: in lại → CS + BP In; thiếu → CS; lỗi may → CS + Kế hoạch may
+// Loại lỗi QC quyết định ai nhận tin: in lại → CS + BP In; thiếu → CS; lỗi may → CS
 const QC_LOAI = [{k:'In lại', t:'Lỗi in, cần in lại', who:'CS và BP In', ph:'Ví dụ: áo số 10 tên NAM bị lem, in lại 1 thân'},
   {k:'Thiếu', t:'Thiếu áo / quần', who:'CS', ph:'Ví dụ: thiếu 2 áo size L số 7, 9'},
-  {k:'Lỗi may', t:'Lỗi may, trả xưởng sửa', who:'CS và Kế hoạch may', ph:'Ví dụ: 2 áo may lệch cổ'}];
+  {k:'Lỗi may', t:'Lỗi may, trả xưởng sửa', who:'CS', ph:'Ví dụ: 2 áo may lệch cổ'}];
 function askQcBad(ma){
   const o = byKey(ma); if (!o) return;
   let k = '';
