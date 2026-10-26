@@ -730,7 +730,7 @@ function vTk(){
   const q = (F.tkQ || '').toUpperCase();
   let pool = D.orders.filter(o => !claimed.has(o.ma) && !o.hoanThanhLuc && (!q || (o.ma+' '+o.ten+' '+o.cs).toUpperCase().indexOf(q) >= 0))
     .sort((a,b) => (b.taoLuc||b.ngayFinal||'').localeCompare(a.taoLuc||a.ngayFinal||''));
-  const poolN = pool.length; pool = pool.slice(0, 40);
+  const poolN = pool.length;
   [...TK_SEL].forEach(m => { if (claimed.has(m)) TK_SEL.delete(m); });
   const mine = all.filter(e => tkPending(e) && (isQL || e.tk === ME)).sort((a,b) => (b.nhanLuc||b.ngay).localeCompare(a.nhanLuc||a.ngay));
   const done = all.filter(e => !tkPending(e));
@@ -746,9 +746,9 @@ function vTk(){
   <div class="sec"><h3>Đơn CS đã nhập · tick đơn bạn đã làm <span class="badge">${poolN}</span></h3>
     <div class="bar"><div class="grow"><input type="search" id="tkq" placeholder="Tìm mã, tên đơn hoặc CS" value="${esc(F.tkQ||'')}" aria-label="Tìm đơn"></div>
       <button class="btn" type="button" id="tkClaim"${TK_SEL.size?'':' disabled'}>Nhận ${TK_SEL.size||''} đơn đã chọn</button></div>
-    ${pool.length ? `<div class="tbox"><table><thead><tr><th></th><th>Mã</th><th>Tên đơn</th><th>CS</th><th>Ngày nhập</th><th>Khách nhận</th></tr></thead><tbody>
-    ${pool.map(o=>`<tr class="pick${TK_SEL.has(o.ma)?' on':''}"><td><input type="checkbox" data-tkpick="${esc(o.ma)}" aria-label="Chọn ${esc(o.ma)}"${TK_SEL.has(o.ma)?' checked':''}></td><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td>${esc(o.cs)}</td><td class="num">${dm((o.taoLuc||o.ngayFinal||'').slice(0,10))}</td><td class="num">${dm(o.ngayKhach)}</td></tr>`).join('')}
-    </tbody></table></div>${poolN > pool.length ? `<div class="hint" style="margin-top:6px">Đang hiện 40 đơn mới nhất trong ${poolN} đơn. Gõ tìm để thấy đơn cũ hơn.</div>` : ''}` : '<div class="empty">Không còn đơn nào chưa có người nhận.</div>'}
+    ${poolN ? D.lists['THƯƠNG HIỆU'].map(th => { const all = pool.filter(o => o.th === th), r = all.slice(0, 40); return `<div class="sub-h">${esc(th)} · ${all.length} đơn</div>` + (r.length ? `<div class="tbox"><table><thead><tr><th></th><th>Mã</th><th>Tên đơn</th><th>CS</th><th>Ngày nhập</th><th>Khách nhận</th></tr></thead><tbody>
+    ${r.map(o=>`<tr class="pick${TK_SEL.has(o.ma)?' on':''}"><td><input type="checkbox" data-tkpick="${esc(o.ma)}" aria-label="Chọn ${esc(o.ma)}"${TK_SEL.has(o.ma)?' checked':''}></td><td class="mono">${esc(o.ma)}</td><td class="name">${esc(o.ten)}</td><td>${esc(o.cs)}</td><td class="num">${dm((o.taoLuc||o.ngayFinal||'').slice(0,10))}</td><td class="num">${dm(o.ngayKhach)}</td></tr>`).join('')}
+    </tbody></table></div>${all.length > r.length ? `<div class="hint" style="margin-top:6px">Đang hiện 40 đơn mới nhất trong ${all.length} đơn ${esc(th)}. Gõ tìm để thấy đơn cũ hơn.</div>` : ''}` : '<div class="empty">Không có đơn nào.</div>'); }).join('') : '<div class="empty">Không còn đơn nào chưa có người nhận.</div>'}
   </div>
   <div class="sec"><h3>${isQL ? 'Đơn thiết kế đã nhận, chờ nhập số rập' : 'Đơn của bạn · nhập số rập'} <span class="badge${mine.length?' hot':''}">${mine.length}</span></h3>
     ${mine.length ? `<div class="tbox"><table><thead><tr>${isQL?'<th>Thiết kế</th>':''}<th>Mã</th><th>Tên đơn</th><th>Rập áo</th><th>Rập quần</th><th>Ghi chú</th><th></th></tr></thead><tbody>
