@@ -27,8 +27,8 @@ const has = r => ROLES.indexOf('QUẢN LÝ') >= 0 || ROLES.indexOf(r) >= 0;
 // step: số bước trong quy trình (hiện trên tab); không có step là màn hình xem / báo cáo
 const VIEWS = [
   {id:'quytrinh', name:'Quy trình', role:''},
-  {id:'tk', name:'Sản lượng TK', role:'TK'},
   {id:'nhap', name:'Nhập đơn', role:'CS', step:1},
+  {id:'tk', name:'Sản lượng TK', role:'TK'},
   {id:'bpin', name:'BP In', role:'BP IN', step:2},
   {id:'bpep', name:'BP Ép', role:['BP ÉP','BP IN'], step:3},
   {id:'cuatoi', name:'CS xác nhận SL', role:'CS', step:4},
