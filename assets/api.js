@@ -20,5 +20,5 @@ function call(fn, ...args){
       .catch(e => { throw new Error(e && e.name === 'SyntaxError' ? 'Link API không đúng hoặc Apps Script chưa mở quyền "Bất kỳ ai"' : (e.message === 'Failed to fetch' ? 'Không kết nối được máy chủ. Kiểm tra mạng hoặc link API.' : e.message)); })
       .then(r => { if (!r.ok) throw new Error(r.error); return r.data; });
   }
-  return new Promise((res, rej) => setTimeout(() => { try { res(JSON.parse(JSON.stringify(MOCK[fn](...args)))); } catch (e) { rej(e); } }, 250));
+  return new Promise((res, rej) => setTimeout(() => { try { const r = MOCK[fn](...args); if (MOCK.__save && fn !== 'getInit' && fn !== 'login') MOCK.__save(); res(JSON.parse(JSON.stringify(r))); } catch (e) { rej(e); } }, 250));
 }

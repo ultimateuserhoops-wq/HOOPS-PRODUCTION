@@ -78,7 +78,10 @@ const MOCK = (() => {
   const SEC = {don:['ten','cs','uuTien','ngayFinal','ngayInEp','ngayKhach','ghiChuCS','loai','slAo','slQuan','chiTiet'], in:['tienDo','mayIn','nguoiIn','cuon','slAoIn','slQuanIn','vai','slBo','slPhoi','vaiBo','vaiPhoi','ghiChuIn','ngayDaIn','chuyenEp','lyDoTraVe','lechKiemLuc','qcInLaiLuc'], ep:['tienDo','epLe','ngayDaEp','chuyenEp','lyDoTraVe','traVeLuc'], cs:['slAo','slQuan','chiTiet','confirm','loai','ctGhiChu'], may:['xuong','ngayGuiMay','ngayTraMay','ghiChuMay','xuatAnhLuc'], qc:['qcNhanLuc','qcKetQua','qcGhiChu','qcLoai','qcInLaiLuc'], xong:['hoanThanhLuc']};
   const STAMP = {in:'inCapNhat', ep:'epCapNhat', cs:'csCapNhat', may:'mayCapNhat', qc:'qcLuc'};
   const NUMK = ['slAoIn','slQuanIn','slAo','slQuan','slBo','slPhoi'];
-  const now = () => '2026-10-20 ' + new Date().toTimeString().slice(0,5);
+  // Bản thử để anh tự nhập: bỏ đơn mẫu, dùng ngày thật, lưu dữ liệu trên trình duyệt này
+  const pad = n => String(n).padStart(2,'0'), D0 = new Date(), TODAY = `${D0.getFullYear()}-${pad(D0.getMonth()+1)}-${pad(D0.getDate())}`;
+  const KEY = 'hoops_demo_v2';
+  const now = () => TODAY + ' ' + new Date().toTimeString().slice(0,5);
   const clean = s => String(s ?? '').replace(/[​\r\n\t]+/g,' ').replace(/\s{2,}/g,' ').trim();
   const check = o => {
     if (!clean(o.ten)) return 'Chưa nhập tên đơn';
@@ -95,12 +98,16 @@ const MOCK = (() => {
     {id:'TK1',ngay:'2026-10-17',tk:'NAM',ma:'H2610-231',ten:'7A1 - Nguyễn Đình Cẩm - Gấp',th:'HOOPS',rapAo:2,rapQuan:1,ghiChu:''},
     {id:'TK2',ngay:'2026-10-19',tk:'NAM',ma:'H2610-236',ten:'ƯU TIÊN - OLWS TIME - KIỀU OANH - GẤP',th:'HOOPS',rapAo:1,rapQuan:1,ghiChu:''},
     {id:'TK3',ngay:'2026-10-19',tk:'LINH',ma:'A2610-092',ten:'Huy Tran',th:'AKU',rapAo:1,rapQuan:0,ghiChu:''},
-    {id:'TK5',ngay:'2026-10-20',nhanLuc:'2026-10-20 08:10',tk:'NAM',ma:'H2610-252',ten:'20-10 TDS NAVY ( CÒN LẠI )',th:'HOOPS',rapAo:'',rapQuan:'',ghiChu:''},
-    {id:'TK6',ngay:'2026-10-20',nhanLuc:'2026-10-20 08:12',tk:'LINH',ma:'H2610-226',ten:'CHAMPION - ĐINH HUY HOÀNG',th:'HOOPS',rapAo:'',rapQuan:'',ghiChu:''},
-    {id:'TK4',ngay:'2026-10-20',tk:'LINH',ma:'H2610-249',ten:'USH - Thịnh Thái',th:'HOOPS',rapAo:3,rapQuan:2,ghiChu:'sửa rập lần 2'},
+    {id:'TK5',ngay:TODAY,nhanLuc:'2026-10-20 08:10',tk:'NAM',ma:'H2610-252',ten:'20-10 TDS NAVY ( CÒN LẠI )',th:'HOOPS',rapAo:'',rapQuan:'',ghiChu:''},
+    {id:'TK6',ngay:TODAY,nhanLuc:'2026-10-20 08:12',tk:'LINH',ma:'H2610-226',ten:'CHAMPION - ĐINH HUY HOÀNG',th:'HOOPS',rapAo:'',rapQuan:'',ghiChu:''},
+    {id:'TK4',ngay:TODAY,tk:'LINH',ma:'H2610-249',ten:'USH - Thịnh Thái',th:'HOOPS',rapAo:3,rapQuan:2,ghiChu:'sửa rập lần 2'},
   ];
+  orders.length = 0; tkEntries.length = 0;
+  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s) { orders.push(...(s.orders||[])); tkEntries.push(...(s.tkEntries||[])); } } catch (e) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({orders, tkEntries})); } catch (e) {} };
   const ACC = {'tk@vidu.vn':{name:'NAM',roles:['TK']},'trinh@vidu.vn':{name:'TRINH',roles:['CS']},'quyen@vidu.vn':{name:'QUYÊN',roles:['CS','KẾ HOẠCH MAY']},'bpin@vidu.vn':{name:'VĂN TÀI',roles:['BP IN']},'ep@vidu.vn':{name:'BP ÉP',roles:['BP ÉP']},'qc@vidu.vn':{name:'QC',roles:['QC']},'quanly@vidu.vn':{name:'MINH',roles:['QUẢN LÝ']}};
-  const SESS = {};
+  const SESS = {}; try { Object.assign(SESS, JSON.parse(localStorage.getItem(KEY+'_sess') || '{}')); } catch (e) {}
+  const saveSess = () => { try { localStorage.setItem(KEY+'_sess', JSON.stringify(SESS)); } catch (e) {} };
   const auth = (t, need) => { const a = SESS[t]; if (!a) throw new Error('AUTH:Bạn cần đăng nhập'); if (need && a.roles.indexOf('QUẢN LÝ')<0 && !need.some(r=>a.roles.indexOf(r)>=0)) throw new Error('Tài khoản của bạn không có quyền làm thao tác này'); return a; };
   const NEED = {don:['CS'], in:['BP IN'], ep:['BP ÉP','BP IN'], cs:['CS'], may:['KẾ HOẠCH MAY'], qc:['QC'], xong:['CS']};
   const nextStt = o => 1 + Math.max(0, ...orders.filter(x => x !== o && x.ngayDaIn === o.ngayDaIn && x.nguoiIn === o.nguoiIn && x.cuon === o.cuon && x.sttCuon !== '').map(x => +x.sttCuon));
@@ -113,12 +120,12 @@ const MOCK = (() => {
     if (sec === 'in') {
       if ('tienDo' in patch && ['Chờ in','Đang in','Đã in'].indexOf(patch.tienDo) < 0) throw new Error('BP In chỉ chọn Chờ in, Đang in hoặc Đã in');
       const td = pick('tienDo');
-      if (td === 'Đã in') { if (!pick('nguoiIn')) throw new Error('Chọn người in trước khi lưu Đã in'); if (!pick('cuon')) throw new Error('Chọn cuộn trước khi lưu Đã in'); if (!pick('ngayDaIn')) patch.ngayDaIn = '2026-10-20'; }
+      if (td === 'Đã in') { if (!pick('nguoiIn')) throw new Error('Chọn người in trước khi lưu Đã in'); if (!pick('cuon')) throw new Error('Chọn cuộn trước khi lưu Đã in'); if (!pick('ngayDaIn')) patch.ngayDaIn = TODAY; }
       else if (td !== 'Đã ép' && pick('chuyenEp')) patch.chuyenEp = false;
     }
     if (sec === 'ep') {
       if (!o.chuyenEp) throw new Error('Đơn chưa được BP In chuyển sang ép');
-      if (patch.tienDo === 'Đã ép' && !pick('ngayDaEp')) patch.ngayDaEp = '2026-10-20';
+      if (patch.tienDo === 'Đã ép' && !pick('ngayDaEp')) patch.ngayDaEp = TODAY;
       if (patch.tienDo === 'Đã in') patch.ngayDaEp = '';
     }
     const before = Object.assign({}, o);
@@ -141,8 +148,8 @@ const MOCK = (() => {
     return o;
   };
   return {
-    login: (email, pw) => { const a = ACC[String(email).trim().toLowerCase()]; if (!a || pw !== '123456') throw new Error('Email hoặc mật khẩu không đúng'); const t = 'demo'+Math.random().toString(36).slice(2); SESS[t] = a; return {token:t, me:{email, name:a.name, roles:a.roles}}; },
-    logout: t => { delete SESS[t]; return true; },
+    login: (email, pw) => { const a = ACC[String(email).trim().toLowerCase()]; if (!a || pw !== '123456') throw new Error('Email hoặc mật khẩu không đúng'); const t = 'demo'+Math.random().toString(36).slice(2); SESS[t] = a; saveSess(); return {token:t, me:{email, name:a.name, roles:a.roles}}; },
+    logout: t => { delete SESS[t]; saveSess(); return true; },
     addTkEntry: (t, e) => {
       const a = auth(t, ['TK']);
       if (!e.ngay) throw new Error('Chưa nhập ngày');
@@ -158,22 +165,24 @@ const MOCK = (() => {
       const a = auth(t, ['TK']);
       return mas.map(ma => { const o = orders.find(x => x.ma === ma); if (!o) throw new Error('Không tìm thấy mã đơn ' + ma);
         const ex = tkEntries.find(e => e.ma === ma); if (ex) throw new Error(`Đơn ${ma} đã được ${ex.tk} nhận`);
-        const r = {id:'TK'+Date.now()+ma, ngay:'2026-10-20', nhanLuc:now(), tk:a.name, ma, ten:o.ten, th:o.th, rapAo:'', rapQuan:'', ghiChu:''}; tkEntries.push(r); return r; });
+        const r = {id:'TK'+Date.now()+ma, ngay:TODAY, nhanLuc:now(), tk:a.name, ma, ten:o.ten, th:o.th, rapAo:'', rapQuan:'', ghiChu:''}; tkEntries.push(r); return r; });
     },
     updateTkEntry: (t, id, e) => {
       const a = auth(t, ['TK']); const r = tkEntries.find(x => x.id === id); if (!r) throw new Error('Không tìm thấy dòng');
       if (a.roles.indexOf('QUẢN LÝ') < 0 && r.tk !== a.name) throw new Error('Chỉ sửa được đơn của chính bạn');
       const ao = +e.rapAo||0, qu = +e.rapQuan||0; if (ao<0||qu<0) throw new Error('Số rập phải là số'); if (!ao && !qu) throw new Error('Nhập số rập áo hoặc số rập quần');
-      Object.assign(r, {rapAo:Math.round(ao), rapQuan:Math.round(qu), ghiChu:clean(e.ghiChu), ngay:'2026-10-20'}); return r;
+      Object.assign(r, {rapAo:Math.round(ao), rapQuan:Math.round(qu), ghiChu:clean(e.ghiChu), ngay:TODAY}); return r;
     },
     deleteTkEntry: (t, id) => { const a = auth(t, ['TK']); const i = tkEntries.findIndex(x=>x.id===id); if (i<0) throw new Error('Không tìm thấy dòng cần xóa'); if (a.roles.indexOf('QUẢN LÝ')<0 && tkEntries[i].tk!==a.name) throw new Error('Chỉ xóa được dòng của chính bạn'); tkEntries.splice(i,1); return true; },
-    getInit: (t) => ({me: auth(t), tkNames:['NAM','LINH'], tkEntries: (auth(t).roles.some(r=>r==='TK'||r==='QUẢN LÝ') ? tkEntries : []), lists, pushAt:'Đã in', orders, today:'2026-10-20', serverTime:'20/10/2026 ' + new Date().toTimeString().slice(0,5) + ' (chạy thử)'}),
+    __save: save,
+    __reset: () => { try { localStorage.removeItem(KEY); } catch (e) {} },
+    getInit: (t) => ({me: auth(t), tkNames:['NAM','LINH'], tkEntries: (auth(t).roles.some(r=>r==='TK'||r==='QUẢN LÝ') ? tkEntries : []), lists, pushAt:'Đã in', orders, today:TODAY, serverTime:TODAY.split('-').reverse().join('/') + ' ' + new Date().toTimeString().slice(0,5) + ' (chạy thử)'}),
     createOrder: (t, o) => {
       const who = auth(t, ['CS']).name;
       const err = check(o); if (err) throw new Error(err);
       const ten = clean(o.ten);
       if (!o.choPhepTrung && orders.some(x => x.ten.toUpperCase() === ten.toUpperCase())) throw new Error('TRÙNG_TÊN:Đã có đơn tên "'+ten+'". Nếu đây là đơn khác, bấm Lưu lần nữa để vẫn tạo.');
-      const p = (o.th === 'AKU' ? 'A' : 'H') + '2610-';
+      const p = (o.th === 'AKU' ? 'A' : 'H') + TODAY.slice(2,4) + TODAY.slice(5,7) + '-';
       const n = Math.max(0, ...orders.filter(x => x.ma.indexOf(p) === 0).map(x => +x.ma.slice(p.length))) + 1;
       const r = mk(p + String(n).padStart(3,'0'), ten, o.th, o.cs, o.uuTien, o.ngayFinal, o.ngayInEp, o.ngayKhach, 'Chờ in', '', {ghiChuCS:clean(o.ghiChuCS), loai:o.loai||'', slAo:o.slAo===''||o.slAo==null?'':Math.round(+o.slAo), slQuan:o.slQuan===''||o.slQuan==null?'':Math.round(+o.slQuan), chiTiet:clean(o.chiTiet||''), taoLuc:now(), nguoiTao:who, inCapNhat:''});
       orders.push(r); return r;

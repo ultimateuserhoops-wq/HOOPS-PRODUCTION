@@ -172,7 +172,7 @@ function render(){
   $('#crumb').innerHTML = `<span>Trang chủ</span><span class="sep">/</span><b>${esc(cur ? cur.name : '')}</b>`;
   $('#avatar').textContent = (ME || '?').trim().charAt(0);
   const noRole = ROLES.length ? '' : '<div class="demo"><b>Tài khoản này chưa có vai trò hợp lệ</b>, nên chỉ xem được Tiến độ. Quản lý ghi ở cột VAI TRÒ (tab TAI_KHOAN) một hoặc nhiều vai trò: CS, BP IN, BP ÉP, KẾ HOẠCH MAY, TK, QUẢN LÝ, cách nhau bằng dấu phẩy. Sau đó bấm Đăng xuất rồi đăng nhập lại.</div>';
-  const demo = (IS_LIVE ? '' : '<div class="demo"><b>Bản chạy thử.</b> Dữ liệu là đơn mẫu, chỉ lưu tạm trong trang này và mất khi tải lại. Bản thật ghi thẳng vào Google Sheet.</div>') + noRole;
+  const demo = (IS_LIVE ? '' : '<div class="demo"><b>Bản chạy thử.</b> Dữ liệu chỉ lưu trên trình duyệt này của bạn, người khác không thấy. Bản thật ghi thẳng vào Google Sheet. <button type="button" class="linkbtn" id="resetDemo">Xóa hết dữ liệu thử</button></div>') + noRole;
   renderBell();
   const v = {qc:vQc, xong:vXong, quytrinh:vQuyTrinh, nhap:vNhap, tiendo:vTienDo, bpin:vBpIn, cuatoi:vCuaToi, may:vMay, bpep:vBpEp, slin:vSlIn, tk:vTk}[VIEW]();
   const keepScroll = window.scrollY;
@@ -974,6 +974,7 @@ function bind(){
   on('slMonth','change', e => { SLM = e.target.value; render(); });
   on('tkWho','change', e => { F.tkWho = e.target.value; render(); });
   main.querySelectorAll('[data-tkdel]').forEach(b => b.onclick = () => delTk(b.dataset.tkdel));
+  on('resetDemo','click', e => { const b = e.target; if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Bấm lần nữa để xóa hết'; return; } MOCK.__reset(); location.reload(); });
   main.querySelectorAll('[data-tkpick]').forEach(c => c.onchange = () => { c.checked ? TK_SEL.add(c.dataset.tkpick) : TK_SEL.delete(c.dataset.tkpick); const b = $('#tkClaim'); b.disabled = !TK_SEL.size; b.textContent = `Nhận ${TK_SEL.size||''} đơn đã chọn`; c.closest('tr').classList.toggle('on', c.checked); });
   on('tkClaim','click', claimTk);
   on('tkq','input', e => { F.tkQ = e.target.value; rerenderKeep('tkq'); });
