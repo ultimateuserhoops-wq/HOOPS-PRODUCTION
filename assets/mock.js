@@ -75,7 +75,7 @@ const MOCK = (() => {
   // Máy in mẫu theo người in; vài đơn có vải phối khác vải bo
   orders.forEach(o => { if (o.nguoiIn && o.tienDo !== 'Chờ in') o.mayIn = o.nguoiIn === 'VĂN TÀI' ? 'MÁY CŨ' : 'MÁY MỚI'; });
   [['H2610-246',8,'ELITE'],['H2610-237',4,'2 DA CỨNG'],['H2610-171',6,'Z2']].forEach(([ma,n,v]) => { const o = orders.find(x => x.ma === ma); o.slPhoi = n; o.vaiPhoi = v; });
-  const SEC = {don:['ten','cs','uuTien','ngayFinal','ngayInEp','ngayKhach','ghiChuCS'], in:['tienDo','mayIn','nguoiIn','cuon','slAoIn','slQuanIn','vai','slBo','slPhoi','vaiBo','vaiPhoi','ghiChuIn','ngayDaIn','chuyenEp','lyDoTraVe','lechKiemLuc','qcInLaiLuc'], ep:['tienDo','epLe','ngayDaEp','chuyenEp','lyDoTraVe','traVeLuc'], cs:['slAo','slQuan','chiTiet','confirm','loai','ctGhiChu'], may:['xuong','ngayGuiMay','ngayTraMay','ghiChuMay','xuatAnhLuc'], qc:['qcNhanLuc','qcKetQua','qcGhiChu','qcLoai','qcInLaiLuc'], xong:['hoanThanhLuc']};
+  const SEC = {don:['ten','cs','uuTien','ngayFinal','ngayInEp','ngayKhach','ghiChuCS','loai','slAo','slQuan','chiTiet'], in:['tienDo','mayIn','nguoiIn','cuon','slAoIn','slQuanIn','vai','slBo','slPhoi','vaiBo','vaiPhoi','ghiChuIn','ngayDaIn','chuyenEp','lyDoTraVe','lechKiemLuc','qcInLaiLuc'], ep:['tienDo','epLe','ngayDaEp','chuyenEp','lyDoTraVe','traVeLuc'], cs:['slAo','slQuan','chiTiet','confirm','loai','ctGhiChu'], may:['xuong','ngayGuiMay','ngayTraMay','ghiChuMay','xuatAnhLuc'], qc:['qcNhanLuc','qcKetQua','qcGhiChu','qcLoai','qcInLaiLuc'], xong:['hoanThanhLuc']};
   const STAMP = {in:'inCapNhat', ep:'epCapNhat', cs:'csCapNhat', may:'mayCapNhat', qc:'qcLuc'};
   const NUMK = ['slAoIn','slQuanIn','slAo','slQuan','slBo','slPhoi'];
   const now = () => '2026-10-20 ' + new Date().toTimeString().slice(0,5);
@@ -133,6 +133,11 @@ const MOCK = (() => {
       if (o.tienDo !== 'Đã in' && o.tienDo !== 'Đã ép') o.sttCuon = '';
     }
     if (STAMP[sec]) o[STAMP[sec]] = now();
+    // CS đã nhập số lượng lúc tạo đơn: BP In in xong mà số khớp thì tự CONFIRM; lệch thì bỏ CONFIRM để hai bên kiểm lại
+    if ((sec === 'in' || sec === 'don') && (o.tienDo === 'Đã in' || o.tienDo === 'Đã ép') && (o.slAo !== '' || o.slQuan !== '') && !o.xuong) {
+      const eq = (a, b) => a === '' || b === '' || +a === +b, ok = eq(o.slAo, o.slAoIn) && eq(o.slQuan, o.slQuanIn) && (o.slAoIn !== '' || o.slQuanIn !== '');
+      if (ok && !o.confirm) { o.confirm = true; o.csCapNhat = now(); o.tuConfirm = true; } else if (!ok && o.confirm) o.confirm = false;
+    }
     return o;
   };
   return {
@@ -170,7 +175,7 @@ const MOCK = (() => {
       if (!o.choPhepTrung && orders.some(x => x.ten.toUpperCase() === ten.toUpperCase())) throw new Error('TRÙNG_TÊN:Đã có đơn tên "'+ten+'". Nếu đây là đơn khác, bấm Lưu lần nữa để vẫn tạo.');
       const p = (o.th === 'AKU' ? 'A' : 'H') + '2610-';
       const n = Math.max(0, ...orders.filter(x => x.ma.indexOf(p) === 0).map(x => +x.ma.slice(p.length))) + 1;
-      const r = mk(p + String(n).padStart(3,'0'), ten, o.th, o.cs, o.uuTien, o.ngayFinal, o.ngayInEp, o.ngayKhach, 'Chờ in', '', {ghiChuCS:clean(o.ghiChuCS), taoLuc:now(), nguoiTao:who, inCapNhat:''});
+      const r = mk(p + String(n).padStart(3,'0'), ten, o.th, o.cs, o.uuTien, o.ngayFinal, o.ngayInEp, o.ngayKhach, 'Chờ in', '', {ghiChuCS:clean(o.ghiChuCS), loai:o.loai||'', slAo:o.slAo===''||o.slAo==null?'':Math.round(+o.slAo), slQuan:o.slQuan===''||o.slQuan==null?'':Math.round(+o.slQuan), chiTiet:clean(o.chiTiet||''), taoLuc:now(), nguoiTao:who, inCapNhat:''});
       orders.push(r); return r;
     },
     updateOrder,
