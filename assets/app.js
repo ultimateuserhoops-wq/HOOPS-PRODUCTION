@@ -126,7 +126,7 @@ function setMe(me){
 }
 function showLogin(msg, typedEmail){
   D = null; ME = ''; ROLES = [];
-  $('#whoBox').hidden = true; $('#nav').innerHTML = ''; $('#syncTxt').textContent = 'Chưa đăng nhập';
+  $('#whoBox').hidden = true; $('#nav').innerHTML = ''; $('#crumb').innerHTML = '<b>Đăng nhập</b>'; $('#syncTxt').textContent = 'Chưa đăng nhập';
   const demo = IS_LIVE ? '' : '<div class="demo"><b>Bản chạy thử.</b> Đăng nhập bằng 1 trong các tài khoản mẫu, mật khẩu đều là <b>123456</b>:<br>tk@vidu.vn (Thiết kế) · trinh@vidu.vn (CS) · quyen@vidu.vn (CS + Kế hoạch may) · bpin@vidu.vn (BP In) · ep@vidu.vn (BP Ép) · qc@vidu.vn (QC) · quanly@vidu.vn (Quản lý)</div>';
   $('#main').innerHTML = demo + `<form class="login" id="fLogin" autocomplete="on">
     <div><h2>Đăng nhập</h2><p class="lede">Dùng email và mật khẩu quản lý đã cấp cho bạn.</p></div>
@@ -163,7 +163,14 @@ function render(){
   const myTodo = D.orders.filter(o => o.cs === F.myCs && reached(o) && !o.confirm).length;
   const mayTodo = D.orders.filter(o => o.confirm && !o.xuong).length;
   const badges = {tiendo: late ? `<span class="badge hot">${late} trễ</span>` : '', bpin:D.orders.some(o=>o.lyDoTraVe&&!o.chuyenEp&&o.tienDo==='Đã in')?`<span class="badge hot">trả về</span>`:`<span class="badge">${notDone.length}</span>`, cuatoi: myTodo ? `<span class="badge hot">${myTodo}</span>` : '', may: mayTodo ? `<span class="badge hot">${mayTodo}</span>` : ''};
-  $('#nav').innerHTML = myViews().map(v => `<button role="tab" type="button" aria-selected="${v.id===VIEW}" data-v="${v.id}">${v.step?`<span class="stepno">${v.step}</span>`:''}${v.name}${badges[v.id]||''}</button>`).join('');
+  // Menu dọc bên trái, chia nhóm Tổng quan / Công việc / Báo cáo
+  const grpOf = id => id === 'quytrinh' ? 'Tổng quan' : ['xong','tiendo','slin'].indexOf(id) >= 0 ? 'Báo cáo' : 'Công việc';
+  let lastG = '';
+  $('#nav').innerHTML = myViews().map(v => { const g = grpOf(v.id), head = g !== lastG ? `<div class="nav-g">${g}</div>` : ''; lastG = g;
+    return head + `<button type="button" aria-current="${v.id===VIEW?'page':'false'}" data-v="${v.id}"><span class="stepno">${v.step||NAV_ICON[v.id]||'•'}</span><span class="nav-t">${v.name}</span>${badges[v.id]||''}</button>`; }).join('');
+  const cur = VIEWS.find(v => v.id === VIEW);
+  $('#crumb').innerHTML = `<span>Trang chủ</span><span class="sep">/</span><b>${esc(cur ? cur.name : '')}</b>`;
+  $('#avatar').textContent = (ME || '?').trim().charAt(0);
   const noRole = ROLES.length ? '' : '<div class="demo"><b>Tài khoản này chưa có vai trò hợp lệ</b>, nên chỉ xem được Tiến độ. Quản lý ghi ở cột VAI TRÒ (tab TAI_KHOAN) một hoặc nhiều vai trò: CS, BP IN, BP ÉP, KẾ HOẠCH MAY, TK, QUẢN LÝ, cách nhau bằng dấu phẩy. Sau đó bấm Đăng xuất rồi đăng nhập lại.</div>';
   const demo = (IS_LIVE ? '' : '<div class="demo"><b>Bản chạy thử.</b> Dữ liệu là đơn mẫu, chỉ lưu tạm trong trang này và mất khi tải lại. Bản thật ghi thẳng vào Google Sheet.</div>') + noRole;
   renderBell();
@@ -173,7 +180,11 @@ function render(){
   window.scrollTo(0, keepScroll);
   bind();
 }
-$('#nav').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (!b) return; VIEW = b.dataset.v; store.set('view', VIEW); window.scrollTo(0,0); render(); });
+const NAV_ICON = {quytrinh:'◎', tk:'✎', xong:'✓', tiendo:'≡', slin:'▤'};
+const sideOpen = on => { document.body.classList.toggle('side-on', on); $('#sideDim').hidden = !on; $('#hamb').setAttribute('aria-expanded', on); };
+$('#hamb').addEventListener('click', () => sideOpen(!document.body.classList.contains('side-on')));
+$('#sideDim').addEventListener('click', () => sideOpen(false));
+$('#nav').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (!b) return; VIEW = b.dataset.v; store.set('view', VIEW); sideOpen(false); window.scrollTo(0,0); render(); });
 
 /* ---------- Thông báo trong web (chuông): tính từ dữ liệu đơn, theo vai trò người đăng nhập ---------- */
 function notifs(){
@@ -225,6 +236,23 @@ const STAGES = [
 ];
 const stageOf = o => isDone(o) ? {id:'xong', name:'Hoàn thành', who:'Đơn hoàn thành', view:'xong'} : (STAGES.find(s => s.test(o)) || STAGES[0]);
 const lateOf = o => o.xuong ? false : o.tienDo === 'Đã ép' ? diff(o.ngayKhach, D.today) < 0 : diff(o.ngayInEp, D.today) < 0;
+// 4 ô số liệu màu ở đầu trang Quy trình, kèm đường nhỏ 7 ngày gần nhất
+function tiles(){
+  const days = Array.from({length:7}, (_,i) => addDays(D.today, i-6));
+  const spark = (pick) => { const v = days.map(d => D.orders.filter(o => (pick(o)||'').slice(0,10) === d).length), mx = Math.max(1, ...v);
+    const pts = v.map((n,i) => `${(i*100/6).toFixed(1)},${(34 - n/mx*28).toFixed(1)}`).join(' ');
+    return `<svg class="tile-sp" viewBox="-2 0 104 38" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2" vector-effect="non-scaling-stroke"/>${v.map((n,i)=>`<circle cx="${(i*100/6).toFixed(1)}" cy="${(34 - n/mx*28).toFixed(1)}" r="1.6" fill="#fff"/>`).join('')}</svg>`; };
+  const inProg = D.orders.filter(o => STAGES[0].test(o) || STAGES[1].test(o) || STAGES[2].test(o)).length;
+  const ep = D.orders.filter(STAGES[3].test).length;
+  const xw = D.orders.filter(o => o.xuatAnhLuc && !o.hoanThanhLuc).length;
+  const done = D.orders.filter(o => (o.hoanThanhLuc||'').slice(0,7) === D.today.slice(0,7)).length;
+  const T = [
+    {c:'t-blue', n:inProg, t:'Đơn đang ở BP In', s:'đã in mỗi ngày', p:o=>o.ngayDaIn, go:'bpin'},
+    {c:'t-sky', n:ep, t:'Đơn chờ ép', s:'đã ép mỗi ngày', p:o=>o.ngayDaEp, go:'bpep'},
+    {c:'t-yellow', n:xw, t:'Đơn ở xưởng / QC', s:'gửi xưởng mỗi ngày', p:o=>o.xuatAnhLuc, go:'qc'},
+    {c:'t-green', n:done, t:'Hoàn thành tháng này', s:'hoàn thành mỗi ngày', p:o=>o.hoanThanhLuc, go:'xong'}];
+  return `<div class="tiles">${T.map(x => `<${canSee(x.go)?`button type="button" data-go="${x.go}"`:'div'} class="tile ${x.c}"><b>${x.n}</b><span>${x.t}</span>${spark(x.p)}<small>${x.s}, 7 ngày qua</small></${canSee(x.go)?'button':'div'}>`).join('')}</div>`;
+}
 function vQuyTrinh(){
   const urg = (a,b) => pLevel(a.uuTien)-pLevel(b.uuTien) || (a.ngayInEp||'9').localeCompare(b.ngayInEp||'9');
   const recentX = o => !isDone(o);
@@ -247,6 +275,7 @@ function vQuyTrinh(){
   if (has('CS')) { const m = D.orders.filter(o => o.qcKetQua === 'Đạt' && !o.hoanThanhLuc && (has('QUẢN LÝ') || o.cs === ME)).length; if (m) todo.push({v:'cuatoi', t:`${m} đơn QC đạt, chờ bấm Đơn đã hoàn thành`, n:m}); }
   if (has('TK')) todo.push({v:'tk', t:'Tick đơn bạn đã làm và nhập số rập', n:-1});
   return `
+  ${tiles()}
   <div class="vhead"><h2>Quy trình đơn hàng</h2><p class="lede">Mỗi đơn đi qua 7 chặng, từ lúc CS nhập đến lúc QC kiểm xong và CS bấm hoàn thành. Bấm tên chặng để mở màn hình làm việc, bấm mã đơn để xem toàn bộ lịch sử của đơn đó.</p></div>
   ${todo.length ? `<div class="sec"><h3>Việc của bạn</h3><div class="todo">${todo.map(x=>`<button type="button" class="todo-i" data-go="${x.v}"><span class="stepno">${(VIEWS.find(v=>v.id===x.v)||{}).step||'TK'}</span><span>${esc(x.t)}</span>${x.n>0?`<span class="badge hot">${x.n}</span>`:''}<span class="arr" aria-hidden="true">→</span></button>`).join('')}</div></div>` : ''}
   <div class="flow-steps" aria-hidden="true"><span style="grid-column:span 3">Bước 2 · BP In</span><span>Bước 3 · BP Ép</span><span style="grid-column:span 2">Bước 5 · Kế hoạch may</span><span>Bước 6 · QC</span></div>
