@@ -179,6 +179,7 @@ function render(){
   $('#main').innerHTML = demo + v;
   window.scrollTo(0, keepScroll);
   bind();
+  enhanceDates($('#main'));
 }
 const NAV_ICON = {quytrinh:'◎', tk:'✎', xong:'✓', tiendo:'≡', slin:'▤'};
 const sideOpen = on => { document.body.classList.toggle('side-on', on); $('#sideDim').hidden = !on; $('#hamb').setAttribute('aria-expanded', on); };
@@ -1015,8 +1016,8 @@ function bind(){
       b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
       if (sec === 'in') {
         const di = c.querySelector('[data-k="ngayDaIn"]'), de = c.querySelector('[data-k="ngayDaEp"]');
-        if ((b.dataset.v === 'Đã in' || b.dataset.v === 'Đã ép') && di && !di.value) { di.value = D.today; draft(ma,'in').ngayDaIn = D.today; }
-        if (b.dataset.v === 'Đã ép' && de && !de.value) { de.value = D.today; draft(ma,'in').ngayDaEp = D.today; }
+        if ((b.dataset.v === 'Đã in' || b.dataset.v === 'Đã ép') && di && !di.value) { di.value = D.today; draft(ma,'in').ngayDaIn = D.today; di.dispatchEvent(new Event('change')); }
+        if (b.dataset.v === 'Đã ép' && de && !de.value) { de.value = D.today; draft(ma,'in').ngayDaEp = D.today; de.dispatchEvent(new Event('change')); }
       }
       mark();
     });
@@ -1074,10 +1075,38 @@ async function moveInRoll(ma, dir){
   try { const rs = await api('reorderCuon', arr); rs.forEach(r => Object.assign(byKey(r.ma), r)); }
   catch (e) { if (errMsg(e) === '__auth__') return; toast('Chưa lưu được thứ tự: ' + errMsg(e), true); load(); }
 }
+/* Ô ngày hiển thị dd/mm/yyyy (ô date của trình duyệt theo ngôn ngữ máy, có máy ra mm/dd/yyyy).
+   Ô date gốc vẫn giữ id/data-k và nhận sự kiện như cũ; ô chữ chỉ để gõ, nút lịch mở bảng chọn ngày gốc. */
+function enhanceDates(root){
+  root.querySelectorAll('input[type="date"]:not([data-dmy])').forEach(d => {
+    d.dataset.dmy = '1';
+    const w = document.createElement('span'); w.className = 'dmy';
+    const t = document.createElement('input'); t.type = 'text'; t.inputMode = 'numeric'; t.placeholder = 'dd/mm/yyyy'; t.autocomplete = 'off'; t.maxLength = 10;
+    const show = v => v ? v.split('-').reverse().join('/') : '';
+    t.value = show(d.value); if (d.id) { t.id = d.id + '_t'; const lb = document.querySelector(`label[for="${CSS.escape(d.id)}"]`); if (lb) lb.htmlFor = t.id; }
+    t.setAttribute('aria-label', d.getAttribute('aria-label') || 'Ngày (ngày/tháng/năm)');
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'dmy-b'; b.setAttribute('aria-label', 'Mở lịch');
+    b.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 10h16M9 3v4M15 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    d.parentNode.insertBefore(w, d); w.append(t, b, d); d.tabIndex = -1; d.setAttribute('aria-hidden', 'true'); d.dmyBox = t;
+    const fire = () => { d.dispatchEvent(new Event('input', {bubbles:true})); d.dispatchEvent(new Event('change', {bubbles:true})); };
+    t.addEventListener('input', () => { const n = t.value.replace(/\D/g, '').slice(0, 8); t.value = n.length > 4 ? n.slice(0,2)+'/'+n.slice(2,4)+'/'+n.slice(4) : n.length > 2 ? n.slice(0,2)+'/'+n.slice(2) : n; });
+    t.addEventListener('change', () => {
+      const v = t.value.trim();
+      if (!v) { if (d.value) { d.value = ''; fire(); } return; }
+      const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+      const y = m && (m[3].length === 2 ? '20' + m[3] : m[3]), iso = m && `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+      const ok = iso && !isNaN(new Date(iso + 'T00:00:00')) && new Date(iso + 'T00:00:00').toISOString().slice(0,10) === iso;
+      if (!ok) { toast('Ngày chưa đúng, gõ theo ngày/tháng/năm, ví dụ 05/11/2026', true); t.value = show(d.value); return; }
+      t.value = show(iso); if (d.value !== iso) { d.value = iso; fire(); }
+    });
+    d.addEventListener('change', () => { t.value = show(d.value); });
+    b.addEventListener('click', () => { try { d.showPicker(); } catch (e) { d.style.pointerEvents = 'auto'; d.focus(); d.click(); } });
+  });
+}
 function rerenderKeep(id){
   const el = document.getElementById(id); const pos = el && el.selectionStart;
   render();
-  const n = document.getElementById(id); if (n) { n.focus(); try { if (pos !== null && n.setSelectionRange && n.type !== 'date') n.setSelectionRange(pos, pos); } catch(e){} }
+  let n = document.getElementById(id); if (n && n.type === 'date' && n.dmyBox) n = n.dmyBox; if (n) { n.focus(); try { if (pos !== null && n.setSelectionRange && n.type !== 'date') n.setSelectionRange(pos, pos); } catch(e){} }
 }
 
 /* ============ Lưu ============ */
